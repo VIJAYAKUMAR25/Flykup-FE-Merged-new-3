@@ -1,0 +1,82 @@
+
+:root {
+  /* Primary Font - Inter */
+  --font-primary: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  
+  /* Secondary Font - Poppins */
+  --font-secondary: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+ --sidebar-width-expanded: 16rem; /* 256px */
+  --sidebar-width-collapsed: 5rem; /* 80px */
+  --current-sidebar-width: 0rem; /* Default to 0 on mobile or before JS loads */
+  /* Font Weights */
+  font-family: var(--font-primary);
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography Classes */
+.font-inter { font-family: var(--font-primary); }
+.font-poppins { font-family: var(--font-secondary); }
+
+/* Weight Classes */
+.font-thin { font-weight: 100; }
+.font-extralight { font-weight: 200; }
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+.font-black { font-weight: 900; }
+
+
+/* ### Recommended Usage
+- **Headings**: Poppins (bold/semibold weights)
+- **Body Text**: Inter (normal/medium weights)
+- **Captions/Small Text**: Inter (light/normal weights) */
+
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.grid {
+  transition: grid-template-columns 0.3s ease-in-out;
+}
+
+main {
+  /* No need for explicit transition on grid-column here if SellerMain controls it */
+  transition: padding-left 0.3s ease-in-out; /* Add this if not present for padding */
+}
+
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@supports (-webkit-touch-callout: none) {
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}

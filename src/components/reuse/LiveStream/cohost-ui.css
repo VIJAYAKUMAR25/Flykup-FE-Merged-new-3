@@ -1,0 +1,310 @@
+/* Enhanced Instagram-style streaming UI with responsive design */
+
+/* Reset and base styles */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Full height container for streaming */
+.h-screen {
+  height: 100vh;
+  height: -webkit-fill-available; /* For iOS Safari */
+}
+
+/* Ensure proper full-screen sizing on mobile */
+.streaming-container {
+  height: 100vh;
+  height: -webkit-fill-available;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background-color: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Live indicator badge */
+.live-badge {
+  display: flex;
+  align-items: center;
+  background-color: #f00;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #fff;
+  margin-right: 4px;
+  animation: pulse 1.5s infinite;
+}
+
+/* Viewer count badge */
+.viewer-count {
+  display: flex;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+/* Button layouts optimized for mobile portrait mode */
+.portrait-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.landscape-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0 16px;
+}
+
+/* Control buttons */
+.control-button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.control-button.active {
+  background-color: #fff;
+  color: #000;
+}
+
+.control-button.inactive {
+  background-color: #f00;
+  color: #fff;
+}
+
+.control-button.transparent {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.control-button.transparent:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.end-button {
+  background-color: #f00;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  border: none;
+  outline: none;
+}
+
+.cohost-button {
+  background-color: #0095f6;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  border: none;
+  outline: none;
+}
+
+/* Gradients for better UI visibility */
+.top-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+}
+
+.bottom-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+}
+
+/* Co-host grid layout */
+.cohosts-grid {
+  display: grid;
+  gap: 8px;
+}
+
+/* Portrait mode layout */
+@media (orientation: portrait) {
+  .cohosts-grid {
+    position: absolute;
+    bottom: 100px;
+    right: 16px;
+    width: 80px;
+  }
+  
+  .streaming-controls {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .action-buttons {
+    position: absolute;
+    bottom: 100px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+}
+
+/* Landscape mode layout */
+@media (orientation: landscape) {
+  .cohosts-grid {
+    position: absolute;
+    top: 70px;
+    right: 16px;
+    width: 100px;
+  }
+  
+  .streaming-controls {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* Co-host thumbnail */
+.cohost-thumbnail {
+  position: relative;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 8px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.cohost-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #f00;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+}
+
+/* Loading spinner animation */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Invite dialog */
+.invite-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.invite-dialog {
+  background-color: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Logs panel */
+.logs-panel {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.logs-header {
+  background-color: #f3f4f6;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.logs-content {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* iOS Safari fix for 100vh issue */
+@supports (-webkit-touch-callout: none) {
+  .h-screen {
+    height: -webkit-fill-available;
+  }
+}

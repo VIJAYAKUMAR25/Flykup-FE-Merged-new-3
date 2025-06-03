@@ -117,7 +117,7 @@
 import { useState } from "react";
 import { Route, Routes, Link } from "react-router-dom";
 import Login from '../components/reuse/auth/login.jsx'; 
-import Register from '../components/reuse/auth/Register.jsx';
+import Register from '../components/reuse/auth/register.jsx';
 import OtpVerification from "../components/reuse/auth/OtpVerification.jsx";
 import ResetPassword from "../components/reuse/auth/ResetPassword.jsx";
 import ForgotPassword from "../components/reuse/auth/ForgotPassword.jsx";

@@ -188,6 +188,7 @@ const Auth = ({ inputData, setInputData }) => {
        return RegisterImage;
      } else if (location.pathname.includes("verify-email") || location.pathname.includes("reset-password")) { // Added reset-password
        return OTPScreen;
+       
      }else if(location.pathname.includes("forgot-password")) {
        return ForgotPasswordImage;
      }

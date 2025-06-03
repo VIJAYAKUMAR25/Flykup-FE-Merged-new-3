@@ -15,20 +15,20 @@ import {
 } from "lucide-react";
 import { FaIndianRupeeSign } from "react-icons/fa6";
 import { FaEdit } from "react-icons/fa";
-import Stocks from "./Stocks";
+import Stocks from "./Stocks"; // Assuming Stocks component exists
 import { IoCloseCircleOutline } from "react-icons/io5";
-import { GET_PRODUCTS_BY_SELLER_ID } from "../../api/apiDetails";
-import axiosInstance from "../../../utils/axiosInstance";
-import { toast } from "react-toastify";
+import { GET_PRODUCTS_BY_SELLER_ID } from "../../api/apiDetails"; // Adjust path as needed
+import axiosInstance from "../../../utils/axiosInstance"; // Adjust path as needed
+import { toast } from "react-toastify"; // Ensure react-toastify is installed
 import { CiCircleList } from "react-icons/ci";
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; // Ensure framer-motion is installed
 
 const ProductListing = () => {
   const [products, setProducts] = useState([]);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("products");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false); // For SellerShowsModal
   const [showAddToShow, setShowAddToShow] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const tabs = [
@@ -91,8 +91,9 @@ const ProductListing = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-blackLight shadow-2xl relative overflow-hidden p-6 text-gray-800">
-      <div className="sticky top-0 z-20 bg-blackLight p-4 shadow-sm flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 -mx-6 px-6 border-l-4 border-newYellow">
+    <div className="flex flex-col min-h-screen w-full bg-blackLight shadow-2xl relative p-6 text-gray-800">
+      {/* Main Header - Always sticky at the very top */}
+      <div className=" bg-blackLight p-4 shadow-sm flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 -mx-6 px-6 border-l-4 border-newYellow">
         <div className="flex-grow">
           <h1 className="text-xl sm:text-2xl font-bold text-whiteLight flex items-center mb-1 sm:mb-0">
             <CiCircleList className="mr-2 text-newYellow" size={24} />
@@ -103,19 +104,17 @@ const ProductListing = () => {
           </p>
         </div>
 
-        {/* Button Section - Align to end */}
-        {/* Removed sm:w-auto to make the button size to its content */}
         <button
-  onClick={handleCreateProduct}
-  className="bg-newYellow hover:bg-amber-300 text-blackDark px-4 py-2 rounded-full font-semibold flex items-center justify-center text-sm sm:w-[200px] sm:text-base transition-colors hover:scale-105 shadow-md shadow-amber-300/50 mt-4 sm:mt-0"
->
-  <Plus size={18} className="mr-2" />
-  Add
-</button>
+          onClick={handleCreateProduct}
+          className="bg-newYellow hover:bg-amber-300 text-blackDark px-4 py-2 rounded-full font-semibold flex items-center justify-center text-sm w-[200px] sm:text-base transition-colors hover:scale-105 shadow-md shadow-amber-300/50 mt-4 sm:mt-0"
+        >
+          <Plus size={18} className="mr-2" />
+          Add
+        </button>
       </div>
 
-      {/* Tabs Navigation - Make it sticky right below the main header */}
-      <div className="sticky top-[96px] z-10 bg-blackLight p-2 -mx-6 px-6 flex space-x-2 mb-2 rounded-lg overflow-x-auto">
+      {/* Tabs Navigation - Sticky right below the main header */}
+      <div className=" bg-blackLight p-2 -mx-6 px-6 flex space-x-2 mb-2 rounded-lg overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -131,7 +130,7 @@ const ProductListing = () => {
             `}
           >
             {tab.icon}
-            <span className=" capitalize">{tab.id}</span>
+            <span className="capitalize">{tab.id}</span>
           </button>
         ))}
       </div>
@@ -214,13 +213,13 @@ const ProductListing = () => {
             </div>
           </div>
 
-          {/* Table Section with Responsiveness */}
-          <div className="overflow-x-auto rounded-lg shadow-sm border border-gray-100 flex-grow">
-            <div className="relative h-full overflow-y-auto">
+          {/* Table Section with Responsiveness - Restructured for sticky header */}
+          <div className="flex flex-col rounded-lg shadow-sm border border-gray-100 flex-grow overflow-hidden">
+            {/* Table Header (Sticky) */}
+            <div className="overflow-x-auto"> {/* Allows horizontal scroll for the header */}
               <table className="table w-full">
-                <thead className="bg-newYellow sticky top-0 z-10">
+                <thead className="bg-newYellow"> {/* No 'sticky' here as it's in its own div */}
                   <tr className="text-primaryBlack">
-                    {/* Fixed widths for table headers */}
                     <th className="w-[80px]">
                       <div className="flex items-center">Image</div>
                     </th>
@@ -258,6 +257,15 @@ const ProductListing = () => {
                     </th>
                   </tr>
                 </thead>
+              </table>
+            </div>
+
+            {/* Table Body (Scrollable) */}
+            <div className="overflow-x-auto overflow-y-auto flex-grow" style={{
+                height: 'calc(100vh - 380px)', 
+                minHeight: '500px'            
+              }}> 
+              <table className="table w-full">
                 <tbody>
                   {filteredProducts.length === 0 ? (
                     <tr>
@@ -391,7 +399,6 @@ const ProductRow = ({ product, toggleProductSelection, isSelected }) => {
   const imageUrl = product.images?.[0]?.key;
   return (
     <tr className="hover:bg-white/5 hover:shadow-xl hover:shadow-white/10 hover:translate-y-[-2px] transform transition-all duration-200 ease-out text-whiteLight cursor-pointer">
-      {/* Fixed widths for table data cells */}
       <td className="w-[80px]">
         <div className="w-12 h-12 flex-shrink-0">
           {imageUrl ? (

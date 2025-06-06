@@ -13,7 +13,7 @@ export const socketurl = "https://flykup-be-socket.onrender.com" //socket new ur
 // export const socketurl = "http://localhost:8081"
 
 export const streamBackendUrl = "https://test-flykup-backend.onrender.com";
-export const mediaSoupServerUrl = 'https://mediasoup.flykup.live';
+export const mediaSoupServerUrl = 'https://mediaserver.flykup.live';
 
 
 /*============================================

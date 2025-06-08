@@ -25,7 +25,7 @@ const menuItems = [
   { name: "Store Setup",       path: "/seller/store-setup",       icon: <FiShoppingBag />,  locked: true },
   { name: "Products",          path: "/seller/productlisting",          icon: <FiPackage />,      locked: false },
   { name: "Shopable Videos",   path: "/seller/viewvideo",            icon: <FiFilm />,         locked: false },
-   { name: "Live Stream",       path: "/seller/allshows",       icon: <FiVideo />,        locked: true },
+   { name: "Live Stream",       path: "/seller/allshows",       icon: <FiVideo />,        locked: false },
   { name: "Orders",            path: "/seller/orders",            icon: <FiInbox />,        locked: true },
   { name: "Payments",          path: "/seller/payments",          icon: <FiCreditCard />,   locked: true },
   { name: "Fulfillment",       path: "/seller/fulfillment",       icon: <FiTruck />,        locked: true },

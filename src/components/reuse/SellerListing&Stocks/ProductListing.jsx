@@ -15,20 +15,20 @@ import {
 } from "lucide-react";
 import { FaIndianRupeeSign } from "react-icons/fa6";
 import { FaEdit } from "react-icons/fa";
-import Stocks from "./Stocks"; // Assuming Stocks component exists
+import Stocks from "./Stocks";
 import { IoCloseCircleOutline } from "react-icons/io5";
-import { GET_PRODUCTS_BY_SELLER_ID } from "../../api/apiDetails"; // Adjust path as needed
-import axiosInstance from "../../../utils/axiosInstance"; // Adjust path as needed
-import { toast } from "react-toastify"; // Ensure react-toastify is installed
+import { GET_PRODUCTS_BY_SELLER_ID } from "../../api/apiDetails"; 
+import axiosInstance from "../../../utils/axiosInstance"; 
+import { toast } from "react-toastify"; 
 import { CiCircleList } from "react-icons/ci";
-import { motion } from "framer-motion"; // Ensure framer-motion is installed
+import { motion } from "framer-motion"; 
 
 const ProductListing = () => {
   const [products, setProducts] = useState([]);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("products");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false); // For SellerShowsModal
+  const [isOpen, setIsOpen] = useState(false); 
   const [showAddToShow, setShowAddToShow] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const tabs = [
@@ -215,10 +215,10 @@ const ProductListing = () => {
 
           {/* Table Section with Responsiveness - Restructured for sticky header */}
           <div className="flex flex-col rounded-lg shadow-sm border border-gray-100 flex-grow overflow-hidden">
-            {/* Table Header (Sticky) */}
-            <div className="overflow-x-auto"> {/* Allows horizontal scroll for the header */}
+         
+            <div className="overflow-x-auto"> 
               <table className="table w-full">
-                <thead className="bg-newYellow"> {/* No 'sticky' here as it's in its own div */}
+                <thead className="bg-newYellow"> 
                   <tr className="text-primaryBlack">
                     <th className="w-[80px]">
                       <div className="flex items-center">Image</div>
@@ -260,7 +260,6 @@ const ProductListing = () => {
               </table>
             </div>
 
-            {/* Table Body (Scrollable) */}
             <div className="overflow-x-auto overflow-y-auto flex-grow" style={{
                 height: 'calc(100vh - 380px)', 
                 minHeight: '500px'            
@@ -415,11 +414,11 @@ const ProductRow = ({ product, toggleProductSelection, isSelected }) => {
         </div>
       </td>
       <td className="w-[200px] p-4 text-whiteLight">
-        <div className="truncate">{product.title}</div>
+        <div className="w-[150px] truncate">{product.title}</div>
       </td>
-      <td className="w-[150px] p-4 text-whiteLight hidden md:table-cell">
-        <div className="truncate">
-          {product.subcategory || product.category || "Other"}
+      <td className="w-[150px]  text-whiteLight hidden md:table-cell">
+        <div className="w-[150px] truncate">
+          { product.category || "Other"}
         </div>
       </td>
       <td className="w-[80px] text-whiteLight font-semibold hidden lg:table-cell">
@@ -436,7 +435,7 @@ const ProductRow = ({ product, toggleProductSelection, isSelected }) => {
               ₹{product.productPrice}
             </span>
             {discountPercentage > 0 && (
-              <span className="ml-2 bg-amber-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold">
+              <span className=" bg-amber-100 text-green-800 px-1 py-1 rounded-full text-[8px] font-semibold">
                 {discountPercentage}% OFF
               </span>
             )}

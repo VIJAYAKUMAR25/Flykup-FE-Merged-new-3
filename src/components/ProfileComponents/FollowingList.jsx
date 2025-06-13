@@ -53,6 +53,7 @@ const FollowingList = ({ userId }) => {
        
         const response = await getFollowing(userId, searchTerm, currentPage); 
 
+        console.log("API following Response:", response);
         if (response?.error) {
              console.error(
             "API Error:",

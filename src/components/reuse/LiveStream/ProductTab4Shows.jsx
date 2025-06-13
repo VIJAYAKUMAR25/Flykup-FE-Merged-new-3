@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingCart,
   Hammer,
@@ -8,9 +9,16 @@ import {
   PlusCircle,
   Box,
   Package,
+  Search,
+  Filter,
+  ArrowUpNarrowWide,
+  ArrowDownWideNarrow,
+  Boxes,
 } from "lucide-react";
 import { GET_PRODUCTS_BY_SELLER_ID } from "../../api/apiDetails";
 import axiosInstance from "../../../utils/axiosInstance";
+
+const cdnURL = import.meta.env.VITE_AWS_CDN_URL;
 
 const ProductTab = ({ onSelectProducts }) => {
   const [products, setProducts] = useState([]);
@@ -20,13 +28,42 @@ const ProductTab = ({ onSelectProducts }) => {
     auction: [],
     giveaway: [],
   });
-  const [validationErrors, setValidationErrors] = useState({});
+  const [validationErrors, setValidationErrors] = useState({}); // For product-specific validation (prices, etc.)
+  const [formErrors, setFormErrors] = useState({}); // For general form errors like subcategory
+
   const [submitStatus, setSubmitStatus] = useState({
     error: null,
     success: null,
   });
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [showOutOfStock, setShowOutOfStock] = useState(false);
+  const [allCategories, setAllCategories] = useState([]);
 
+  // Mock formData and currentCategoryObj for demonstration of subcategory dropdown.
+  // In your actual app, these might come from props or other state management.
+  const [formData, setFormData] = useState({
+    category: "Electronics", // Example: a category is selected to enable subcategory dropdown
+    subCategory: "",
+  });
+  const [currentCategoryObj, setCurrentCategoryObj] = useState({
+    subcategories: [{ _id: "1", name: "Laptops" }, { _id: "2", name: "Smartphones" }, { _id: "3", name: "Tablets" }],
+  });
+  const isAnyLoading = false; // Example: assuming no loading state from external source
+
+  // This handleChange is specifically for the subcategory dropdown example
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // You would typically add validation for subcategory here if it's required
+    // For example:
+    // if (name === "subCategory" && value === "") {
+    //   setFormErrors(prev => ({ ...prev, subCategory: "Subcategory is required" }));
+    // } else {
+    //   setFormErrors(prev => { const newErrors = { ...prev }; delete newErrors.subCategory; return newErrors; });
+    // }
+  };
 
 
   const getValidationError = (tab, index, field) => {
@@ -34,9 +71,8 @@ const ProductTab = ({ onSelectProducts }) => {
   };
 
   const validateFields = () => {
-    const errors = {};
+    const errors = {}; // Local object to collect errors
 
-    // Validate Buy Now products
     selectedProducts.buyNow.forEach((product, index) => {
       if (
         product.productPrice === "" ||
@@ -47,7 +83,6 @@ const ProductTab = ({ onSelectProducts }) => {
       }
     });
 
-    // Validate Auction products
     selectedProducts.auction.forEach((product, index) => {
       if (
         product.startingPrice === "" ||
@@ -65,38 +100,67 @@ const ProductTab = ({ onSelectProducts }) => {
       }
     });
 
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
+    // You can also add validation for the subcategory here if it's part of the overall submission validation
+    // if (formData.category && formData.subCategory === "") {
+    //   errors['subCategory'] = "Subcategory is required when a category is selected";
+    // }
+
+    setValidationErrors(errors); // Update the state with these product-specific errors
+    // If you add subcategory validation here, you'd merge or use a separate state for it
+    // setFormErrors(subcategoryErrors); // if subcategory errors are handled separately
+    return Object.keys(errors).length === 0; // Only check product errors for now
   };
 
-  // Fetch products when userData is available
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  // Fetch products from the backend
   const fetchProducts = async () => {
     try {
       const { data } = await axiosInstance.get(GET_PRODUCTS_BY_SELLER_ID);
       if (data.status) {
         setProducts(data?.data);
+        const categories = [
+          "All",
+          ...new Set(data?.data.map((p) => p.category).filter(Boolean)),
+        ];
+        setAllCategories(categories);
       }
     } catch (error) {
       console.error("Error fetching products:", error);
+      setSubmitStatus({
+        error: "Failed to fetch products. Please try again.",
+        success: null,
+      });
     }
   };
 
-  // Get available products (not already selected in any tab)
+  const filterProducts = (prods) => {
+    let filtered = prods.filter((product) => {
+      const matchesSearch = product.title
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+      const matchesCategory =
+        selectedCategory === "All" || product.category === selectedCategory;
+
+      const matchesStock = showOutOfStock ? true : product.quantity > 0;
+
+      return matchesSearch && matchesCategory && matchesStock;
+    });
+    return filtered;
+  };
+
   const getAvailableProducts = (tab) => {
-    return products.filter(
+    const allAvailable = products.filter(
       (product) =>
         !selectedProducts.buyNow.some((p) => p.productId === product._id) &&
         !selectedProducts.auction.some((p) => p.productId === product._id) &&
         !selectedProducts.giveaway.some((p) => p.productId === product._id)
     );
+    return filterProducts(allAvailable);
   };
 
-  // Handle product selection
   const handleProductSelect = (tab, product) => {
     const newProduct = {
       productId: product._id,
@@ -107,6 +171,7 @@ const ProductTab = ({ onSelectProducts }) => {
             : "",
         title: product.title,
         images: product.images,
+        quantity: product.quantity,
       }),
       ...(tab === "auction" && {
         startingPrice:
@@ -119,11 +184,13 @@ const ProductTab = ({ onSelectProducts }) => {
             : "",
         images: product.images,
         title: product.title,
+        quantity: product.quantity,
       }),
       ...(tab === "giveaway" && {
         followersOnly: false,
         images: product.images,
         title: product.title,
+        quantity: product.quantity,
       }),
     };
 
@@ -133,7 +200,6 @@ const ProductTab = ({ onSelectProducts }) => {
     }));
   };
 
-  // Handle product removal
   const handleProductRemove = (tab, productId) => {
     setSelectedProducts((prev) => ({
       ...prev,
@@ -141,8 +207,6 @@ const ProductTab = ({ onSelectProducts }) => {
     }));
   };
 
-  // Handle changes for price inputs (for auction and buyNow)
-  // Value is stored as string so that empty input is preserved.
   const handlePriceChange = (productId, field, value) => {
     setSelectedProducts((prev) => ({
       ...prev,
@@ -155,7 +219,6 @@ const ProductTab = ({ onSelectProducts }) => {
     }));
   };
 
-  // Handle individual giveaway toggle change
   const handleGiveawayChange = (productId, followersOnly) => {
     setSelectedProducts((prev) => ({
       ...prev,
@@ -165,34 +228,38 @@ const ProductTab = ({ onSelectProducts }) => {
     }));
   };
 
-  // Submit selected products
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitStatus({ error: null, success: null });
     if (!validateFields()) {
+      setSubmitStatus({
+        error: "Please correct the validation errors before confirming.",
+        success: null,
+      });
       return;
     }
     onSelectProducts(selectedProducts);
+    setSubmitStatus({ success: "Products selection confirmed!", error: null });
   };
 
-  // Tab configuration
   const tabInfo = {
     buyNow: {
       label: "Buy Now",
       icon: ShoppingCart,
-      activeColor: "bg-primaryYellow text-primaryBlack font-bold",
-      inactiveColor: "hover:bg-amber-100 text-primaryBlack",
+      activeColor: "bg-newYellow text-blackDark shadow-lg shadow-yellow-500/25",
+      inactiveColor: "text-whiteLight bg-blackLight hover:text-blackDark hover:bg-amber-100",
     },
     auction: {
       label: "Auction",
       icon: Hammer,
-      activeColor: "bg-primaryYellow text-primaryBlack font-bold",
-      inactiveColor: "hover:bg-amber-100 text-primaryBlack",
+      activeColor: "bg-newYellow text-blackDark shadow-lg shadow-yellow-500/25",
+      inactiveColor: "text-whiteLight bg-blackLight hover:text-blackDark hover:bg-amber-100",
     },
     giveaway: {
       label: "Giveaway",
       icon: Gift,
-      activeColor: "bg-primaryYellow text-primaryBlack font-bold",
-      inactiveColor: "hover:bg-amber-100 text-primaryBlack",
+      activeColor: "bg-newYellow text-blackDark shadow-lg shadow-yellow-500/25",
+      inactiveColor: "text-whiteLight bg-blackLight hover:text-blackDark hover:bg-amber-100",
     },
   };
 
@@ -202,72 +269,195 @@ const ProductTab = ({ onSelectProducts }) => {
     selectedProducts.giveaway.length;
 
   return (
-    <div className="bg-slate-200 rounded-box shadow-lg">
-      {/* Tabs */}
-      <div className="tabs tabs-boxed bg-gray-100 rounded-box p-1">
-        {Object.keys(tabInfo).map((tab) => {
-          const {
-            icon: Icon,
-            label,
-            activeColor,
-            inactiveColor,
-          } = tabInfo[tab];
+    <div className="bg-blackDark rounded-box shadow-lg  overflow-x-hidden px-2"> {/* Added overflow-x-hidden */}
+      <motion.div
+        className="relative bg-yellowHalf rounded-2xl shadow-lg backdrop-blur-sm mb-3  py-2" // Added px-3 py-2 for consistent padding
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+      
+        {/* Desktop Layout - Tabs and Filters side-by-side or stacked */}
+        <div className="hidden lg:flex items-center justify-between gap-4 w-full"> {/* Added w-full */}
+          <AnimatePresence>
+            <div className="flex gap-2 min-w-0 flex-wrap"> {/* Added min-w-0 and flex-wrap */}
+              {Object.keys(tabInfo).map((tab) => {
+                const { icon: Icon, label, activeColor, inactiveColor } = tabInfo[tab];
+                const isActive = activeTab === tab;
+                const count = selectedProducts[tab].length;
 
-          return (
-            <button
-              key={tab}
-              className={`
-                tab 
-                flex 
-                items-center 
-                transition-all 
-                duration-200 
-                ${activeTab === tab ? activeColor : `${inactiveColor} bg-white`}
-                lg:flex-row lg:gap-2
-                max-lg:justify-center max-lg:px-3
-              `}
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveTab(tab);
-              }}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="max-lg:hidden ml-2">
-                {label} ({selectedProducts[tab].length})
-              </span>
-              <span className="lg:hidden ml-1 text-xs">
-                ({selectedProducts[tab].length})
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                return (
+                  <motion.button
+                    key={tab}
+                    className={`
+                      relative flex items-center gap-3 px-6 py-3 rounded-xl font-medium text-sm
+                      transition-all duration-300 ease-out
+                      ${isActive ? activeColor : inactiveColor}
+                      min-w-fit flex-shrink-0 {/* Added flex-shrink-0 to prevent shrinking */}
+                    `}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setActiveTab(tab);
+                      setSearchTerm("");
+                      setSelectedCategory("All");
+                      setShowOutOfStock(false);
+                      setValidationErrors({});
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    layout
+                  >
+                    <motion.div
+                      initial={{ rotate: 0 }}
+                      animate={{ rotate: isActive ? 360 : 0 }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </motion.div>
 
-      {/* Counts */}
-      <div className="flex justify-center items-center space-x-4 p-2 mt-2 mr-8">
-        <div className="tooltip tooltip-bottom">
-          <div className="flex items-center bg-slate-400 text-primaryBlack px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <span className="font-bold text-sm">
-              Total Products: {products.length}
-            </span>
-          </div>
-        </div>
-        <div className="tooltip tooltip-bottom">
-          <div className="relative">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center">
-              <ShoppingCart className="w-5 h-5" />
+                    <span className="font-semibold whitespace-nowrap">
+                      {label}
+                    </span>
+
+                    {count > 0 && (
+                      <motion.div
+                        className={`
+                          px-2 py-1 rounded-full bg-red-500 text-whiteLight text-xs font-bold min-w-[1.5rem] text-center
+                        `}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      >
+                        {count}
+                      </motion.div>
+                    )}
+                  </motion.button>
+                );
+              })}
             </div>
-            {totalSelectedProducts > 0 && (
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-white animate-bounce">
-                {totalSelectedProducts}
-              </div>
-            )}
+          </AnimatePresence>
+          {/* Filters and Search for Desktop */}
+          <div className="flex items-center gap-4 min-w-0"> {/* Added min-w-0 */}
+            <div className="form-control flex-grow"> {/* Added flex-grow */}
+              <label className="input input-bordered flex items-center gap-2 bg-blackDark rounded-full border border-gray-600">
+                <Search size={20} className="text-gray-500" />
+                <input
+                  type="text"
+                  className="grow text-whiteLight bg-blackDark placeholder-whiteHalf focus:outline-none min-w-0" // Added min-w-0
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="form-control flex-shrink-0"> {/* Added flex-shrink-0 */}
+              
+              <select
+                className="select select-bordered focus:select-focus w-full bg-blackDark text-whiteLight rounded-full border border-gray-600 min-w-0" // Added min-w-0
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="All">All Categories</option>
+                {allCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* Mobile Layout - Tabs then Filters below */}
+        <div className="lg:hidden">
+          <div className="flex gap-2 overflow-x-auto py-2 justify-between px-3 scrollbar-hide mb-3">
+            {Object.keys(tabInfo).map((tab) => {
+              const { icon: Icon, label, activeColor, inactiveColor } = tabInfo[tab];
+              const isActive = activeTab === tab;
+              const count = selectedProducts[tab].length;
+
+              return (
+                <motion.button
+                  key={tab}
+                  className={`
+                    relative flex items-center gap-1 px-4 py-2 rounded-xl
+                    transition-all duration-300 ease-out min-w-[80px] flex-shrink-0
+                    ${isActive ? activeColor : inactiveColor}
+                  `}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveTab(tab);
+                    setSearchTerm("");
+                    setSelectedCategory("All");
+                    setShowOutOfStock(false);
+                    setValidationErrors({});
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <motion.div
+                    className="relative"
+                    initial={{ rotate: 0 }}
+                    animate={{ rotate: isActive ? 360 : 0 }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {count > 0 && (
+                      <motion.div
+                        className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      >
+                        {count > 9 ? '9+' : count}
+                      </motion.div>
+                    )}
+                  </motion.div>
+
+                  <span className="text-xs font-medium whitespace-nowrap">
+                    {label}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+          {/* Filters and Search for Mobile - below the tabs */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full px-3">
+            <div className="form-control w-full sm:w-auto flex-grow"> {/* Added flex-grow */}
+             
+              <label className="input input-bordered flex items-center gap-2 bg-blackDark rounded-lg border border-gray-600">
+                <Search size={20} className="text-gray-500" />
+                <input
+                  type="text"
+                  className="grow text-whiteLight bg-blackDark placeholder-whiteHalf focus:outline-none min-w-0" // Added min-w-0
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="form-control w-full sm:w-auto flex-shrink-0"> {/* Added flex-shrink-0 */}
+              <select
+                className="select select-bordered focus:select-focus w-full bg-blackDark text-whiteLight rounded-lg border border-gray-600 min-w-0" // Added min-w-0
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="All">All Categories</option>
+                {allCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+    
 
       {/* Tab Content */}
-      <div className="">
+      <div>
         {activeTab === "buyNow" && (
           <ProductTabContent
             products={getAvailableProducts("buyNow")}
@@ -278,6 +468,7 @@ const ProductTab = ({ onSelectProducts }) => {
             validationErrors={validationErrors}
             getValidationError={getValidationError}
             type="buyNow"
+            cdnURL={cdnURL}
           />
         )}
 
@@ -290,6 +481,7 @@ const ProductTab = ({ onSelectProducts }) => {
             onChange={handlePriceChange}
             validationErrors={validationErrors}
             getValidationError={getValidationError}
+            cdnURL={cdnURL}
           />
         )}
 
@@ -300,21 +492,87 @@ const ProductTab = ({ onSelectProducts }) => {
             onSelect={(product) => handleProductSelect("giveaway", product)}
             onRemove={(productId) => handleProductRemove("giveaway", productId)}
             onChange={handleGiveawayChange}
+            cdnURL={cdnURL}
           />
         )}
       </div>
-
+  {/* Submission Status */}
+      {submitStatus.error && (
+        <div role="alert" className="alert alert-error rounded-full shadow-lg">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="stroke-current shrink-0 h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>{submitStatus.error}</span>
+        </div>
+      )}
+      {submitStatus.success && (
+        <div role="alert" className="alert alert-success rounded-full shadow-lg">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="stroke-current shrink-0 h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>{submitStatus.success}</span>
+        </div>
+      )}
       <button
-        className="btn btn-ghost bg-primaryYellow hover:bg-amber-400 text-primaryBlack font-bold mt-6 w-full"
+        className="btn btn-ghost bg-newYellow hover:bg-blackDark hover:text-newYellow text-blackDark font-bold mt-1 w-full py-3 text-lg rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
         onClick={handleSubmit}
       >
-        Confirm Selection
+        Confirm Selection ({totalSelectedProducts} )
       </button>
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e0;
+          border-radius: 10px;
+          border: 2px solid #f1f1f1;
+        }
+
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e0 #f7fafc;
+        }
+
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 };
 
-// Updated ProductTabContent Component with DaisyUI
 const ProductTabContent = ({
   products,
   selected,
@@ -324,132 +582,130 @@ const ProductTabContent = ({
   type,
   validationErrors,
   getValidationError,
+  cdnURL,
 }) => {
-    const cdnURL = import.meta.env.VITE_AWS_CDN_URL;
-
   return (
     <div className="container mx-auto space-y-2">
       {/* Available Products Section */}
-      <div className="card bg-white shadow-xl border">
-        <div className="px-3 py-2">
-          <div className="flex justify-between">
-            <h2 className="card-title text-xl font-bold mb-1 text-primaryBlack flex items-center gap-3">
-              Available Products
+      <div className="card bg-blackDark shadow-xl border ">
+        <div className="card-body p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="card-title text-2xl font-extrabold text-whiteLight flex items-center gap-3">
+              <PlusCircle className="w-6 h-6 text-newYellow" />
+              Available Products for {type === "buyNow" ? "Buy Now" : "Listing"}
             </h2>
-            <div className="relative right-0">
-              <ChevronDown
-                size={24}
-                className="text-primary animate-[glowPulse_1.5s_infinite] transition-all duration-300 hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
-            </div>
           </div>
           <div
-            className="overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
+            className="overflow-x-auto overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
             style={{
               scrollbarWidth: "thin",
               scrollbarColor: "#CBD5E0 #F7FAFC",
             }}
           >
-            <table className="table w-full">
-              <thead className="sticky top-0 bg-white z-10">
-                <tr className="bg-inputYellow text-primaryBlack">
-                  <th>#</th>
-                  <th>Image</th>
-                  <th>Title</th>
-                  <th>Stock</th>
-                  {type === "buyNow" && <th>Price</th>}
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product, index) => (
-                  <tr
-                    key={product.productId}
-                    className="transition-all duration-300 ease-in-out transform hover:scale-103 hover:shadow-md"
-                  >
-                    <td>{index + 1}</td>
-                    <td>
-                      <div className="avatar">
-                        <div className="w-10 rounded">
-                          <img
-                            src={product?.images[0]?.key ? `${cdnURL}${product.images[0].key}` : "/placeholder-image.png"}
-                            alt={product?.title}
-                            className="w-24 h-24 object-cover rounded-lg"
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="max-w-[150px] w-[150px] text-primaryBlack">
-                      <div className="truncate">{product.title}</div>
-                    </td>
-                    <td className="text-success font-semibold">
-                      <div className="flex items-center gap-2">
-                        <Box className="w-5 h-5" />
-                        <span>{product.quantity}</span>
-                      </div>
-                    </td>
-                    {type === "buyNow" && (
-                      <td>
-                        <span className="text-gray-700 font-medium">
-                          ₹ {product.productPrice}
-                        </span>
-                      </td>
-                    )}
-                    <td>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          onSelect(product);
-                        }}
-                        className="btn btn-ghost bg-green-200 btn-sm hover:animate-none flex items-center justify-center text-info"
-                        aria-label="Select Product"
-                        title="Select Product"
-                      >
-                        <PlusCircle
-                          size={22}
-                          className="text-success hover:text-success-focus"
-                        />
-                      </button>
-                    </td>
+            {products.length === 0 ? (
+              <div className="text-center py-10 text-gray-500 text-lg">
+                <p>No available products matching your criteria.</p>
+                <p className="text-sm mt-1">Try adjusting your filters or search term.</p>
+              </div>
+            ) : (
+              <table className="table w-full">
+                <thead className="sticky top-0 bg-newYellow z-10 shadow-sm">
+                  <tr className="text-blackDark">
+                    <th>#</th>
+                    <th>Image</th>
+                    <th>Title</th>
+                    <th>Stock</th>
+                    {type === "buyNow" && <th>Original Price</th>}
+                    <th>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {products.map((product, index) => (
+                    <tr
+                      key={product._id}
+                      className="hover:bg-white/5 hover:shadow-xl hover:shadow-white/10 hover:translate-y-[-2px] transform transition-all duration-200 ease-out text-whiteLight cursor-pointer"
+                    >
+                      <td>{index + 1}</td>
+                      <td>
+                        <div className="avatar">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden">
+                            <img
+                              src={
+                                product?.images[0]?.key
+                                  ? `${cdnURL}${product.images[0].key}`
+                                  : "/placeholder-image.png"
+                              }
+                              alt={product?.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="max-w-[180px] text-whiteLight font-medium">
+                        <div className="truncate" title={product.title}>
+                          {product.title}
+                        </div>
+                      </td>
+                      <td>
+                        <div className={`flex items-center gap-2 ${product.quantity <= 0 ? 'text-error font-semibold' : 'text-success font-semibold'}`}>
+                          <Package className="w-5 h-5" />
+                          <span>{product.quantity}</span>
+                        </div>
+                      </td>
+                      {type === "buyNow" && (
+                        <td>
+                          <span className="text-whiteLight font-medium">
+                            ₹ {product.productPrice || "N/A"}
+                          </span>
+                        </td>
+                      )}
+                      <td>
+                       <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onSelect(product);
+                          }}
+                          className="btn btn-circle btn-sm bg-greenLight text-blackDark shadow-lg hover:from-green-600 hover:to-green-800 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75"
+                          data-tip="Select Product"
+                          aria-label="Select Product"
+                          title="Select Product"
+                        >
+                          <PlusCircle size={20} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
 
       {/* Selected Products Section */}
       {selected.length > 0 && (
-        <div className="card bg-white shadow-xl border">
-          <div className="px-3 py-2">
-            <div className="flex justify-between">
-              <h2 className="card-title text-xl font-bold mb-4 text-primaryBlack flex items-center gap-3">
-                Selected Products
+        <div className="card bg-blackLight shadow-xl border border-gray-200 mt-6">
+          <div className="card-body p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="card-title text-2xl font-extrabold text-whiteLight flex items-center gap-3">
+                <ShoppingCart className="w-6 h-6 text-newYellow" />
+                Your Selected Products
               </h2>
-              <div className="relative right-0">
-                <ChevronDown
-                  size={24}
-                  className="text-primary animate-[glowPulse_3s_infinite] transition-all duration-300 hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
-              </div>
             </div>
             <div
-              className="overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
+              className="overflow-x-auto overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
               style={{
                 scrollbarWidth: "thin",
                 scrollbarColor: "#CBD5E0 #F7FAFC",
               }}
             >
-              <table className="table w-full">
-                <thead className="sticky top-0 bg-white z-10">
-                  <tr className="bg-inputYellow text-primaryBlack">
+              <table className="table  w-full">
+                <thead className="sticky top-0 bg-newYellow z-10 shadow-sm">
+                  <tr className="text-blackDark">
                     <th>#</th>
                     <th>Image</th>
                     <th>Title</th>
-                    {type === "buyNow" && <th>Price</th>}
+                    {type === "buyNow" && <th>Set Price</th>}
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -457,42 +713,61 @@ const ProductTabContent = ({
                   {selected.map((product, index) => (
                     <tr
                       key={product.productId}
-                      className="transition-all hover:inputYellow duration-300 ease-in-out transform hover:scale-103 hover:shadow-md"
+                         className="hover:bg-white/5 hover:shadow-xl hover:shadow-white/10 hover:translate-y-[-2px] transform transition-all duration-200 ease-out text-whiteLight cursor-pointer"
                     >
                       <td>{index + 1}</td>
                       <td>
                         <div className="avatar">
-                          <div className="w-10 rounded">
-                          <img
-                            src={product?.images[0]?.key ? `${cdnURL}${product.images[0].key}` : "/placeholder-image.png"}
-                            alt={product?.title}
-                            className="w-24 h-24 object-cover rounded-lg"
-                          />
+                          <div className="w-16 h-16 rounded-lg overflow-hidden">
+                            <img
+                              src={
+                                product?.images[0]?.key
+                                  ? `${cdnURL}${product.images[0].key}`
+                                  : "/placeholder-image.png"
+                              }
+                              alt={product?.title}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
                         </div>
                       </td>
-                      <td className="max-w-[200px] w-[200px] text-primaryBlack">
-                        <div className="truncate">{product.title}</div>
+                      <td className="max-w-[180px] text-whiteLight font-medium">
+                        <div className="truncate" title={product.title}>
+                          {product.title}
+                        </div>
                       </td>
                       {type === "buyNow" && (
                         <td>
-                          <input
-                            type="text"
-                            value={product.productPrice}
-                            onChange={(e) =>
-                              onChange(
-                                product.productId,
-                                "productPrice",
-                                e.target.value
-                              )
-                            }
-                            className={`input input-bordered input-primary text-primaryBlack font-bold bg-inputYellow input-md rounded-full w-full focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 ${
-                              getValidationError("buyNow", index, "price")
-                                ? "input-error"
-                                : "input-primary"
-                            }`}
-                            placeholder="Enter Price"
-                          />
+                          <label className="form-control w-full max-w-xs">
+                            <input
+                              type="text"
+                              value={product.productPrice}
+                              onChange={(e) =>
+                                onChange(
+                                  product.productId,
+                                  "productPrice",
+                                  e.target.value
+                                )
+                              }
+                              className={`input input-bordered text-whiteLight rounded-full font-bold bg-blackDark w-[100px] ${
+                                getValidationError("buyNow", index, "price")
+                                  ? "input-error"
+                                  : ""
+                              }`}
+                              placeholder="Enter Price"
+                            />
+                            {getValidationError("buyNow", index, "price") && (
+                              <div className="label">
+                                <span className="label-text-alt text-error">
+                                  {getValidationError(
+                                    "buyNow",
+                                    index,
+                                    "price"
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </label>
                         </td>
                       )}
                       <td>
@@ -501,7 +776,10 @@ const ProductTabContent = ({
                             e.preventDefault();
                             onRemove(product.productId);
                           }}
-                          className="btn btn-error btn-sm animate-shake hover:animate-none flex items-center gap-2"
+                          className="btn btn-circle btn-sm bg-red-500 text-whiteLight shadow-lg hover:from-green-600 hover:to-green-800 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75"
+                          data-tip="Remove Product"
+                          aria-label="Remove Product"
+                          title="Remove Product"
                         >
                           <Trash size={16} />
                         </button>
@@ -518,7 +796,6 @@ const ProductTabContent = ({
   );
 };
 
-// Updated AuctionTabContent Component
 const AuctionTabContent = ({
   products,
   selected,
@@ -527,132 +804,131 @@ const AuctionTabContent = ({
   onChange,
   validationErrors,
   getValidationError,
+  cdnURL,
 }) => {
-      const cdnURL = import.meta.env.VITE_AWS_CDN_URL;
   return (
-    <div className="container mx-auto space-y-2">
+    <div className="container mx-auto space-y-4">
       {/* Available Products Section */}
-      <div className="card bg-white shadow-xl border">
-        <div className="px-3 py-2">
-          <div className="flex justify-between">
-            <h2 className="card-title text-xl font-bold mb-1 text-primaryBlack flex items-center gap-3">
-              Available Auction Products
+      <div className="card bg-blackDark shadow-xl border ">
+        <div className="card-body p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="card-title text-2xl font-extrabold text-whiteLight flex items-center gap-3">
+              <PlusCircle className="w-6 h-6 text-newYellow" />
+              Available Products for Auction
             </h2>
-            <div className="relative right-0">
-              <ChevronDown
-                size={24}
-                className="text-primary animate-[glowPulse_1.5s_infinite] transition-all duration-300 hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
-            </div>
           </div>
           <div
-            className="overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
+            className="overflow-x-auto overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
             style={{
               scrollbarWidth: "thin",
               scrollbarColor: "#CBD5E0 #F7FAFC",
             }}
           >
-            <table className="table w-full">
-              <thead className="sticky top-0 bg-white z-10">
-                <tr className="bg-inputYellow text-primaryBlack">
-                  <th>#</th>
-                  <th>Image</th>
-                  <th>Title</th>
-                  <th>Start Price</th>
-                  <th>Reserve Price</th>
-                  <th>Stocks</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product, index) => (
-                  <tr
-                    key={product.productId}
-                    className="transition-all duration-300 ease-in-out transform hover:scale-103 hover:shadow-md"
-                  >
-                    <td>{index + 1}</td>
-                    <td>
-                      <div className="avatar">
-                        <div className="w-10 rounded">
-                        <img
-                            src={product?.images[0]?.key ? `${cdnURL}${product.images[0].key}` : "/placeholder-image.png"}
-                            alt={product?.title}
-                            className="w-24 h-24 object-cover rounded-lg"
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="max-w-[150px] w-[150px] text-primaryBlack">
-                      <div className="truncate">{product.title}</div>
-                    </td>
-                    <td className="text-slate-600 font-semibold">
-                      ₹ {product.startingPrice}
-                    </td>
-                    <td className="text-slate-600 font-semibold">
-                      ₹ {product.reservedPrice}
-                    </td>
-                    <td className="flex gap-1">
-                      <Package className="w-5 h-5" />
-                      <div className="text-gray-700 font-medium">
-                        {product.quantity}
-                      </div>
-                    </td>
-                    <td>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          onSelect(product);
-                        }}
-                        className="btn btn-ghost bg-green-200 btn-sm hover:animate-none flex items-center justify-center text-info"
-                        aria-label="Select Product"
-                        title="Select Product"
-                      >
-                        <PlusCircle
-                          size={22}
-                          className="text-success hover:text-success-focus"
-                        />
-                      </button>
-                    </td>
+            {products.length === 0 ? (
+              <div className="text-center py-10 text-gray-500 text-lg">
+                <p>No available products for auction matching your criteria.</p>
+                <p className="text-sm mt-1">Try adjusting your filters or search term.</p>
+              </div>
+            ) : (
+              <table className="table w-full">
+                <thead className="sticky top-0 bg-newYellow z-10 shadow-sm">
+                  <tr className="text-blackDark">
+                    <th>#</th>
+                    <th>Image</th>
+                    <th>Title</th>
+                    <th>Original Start Price</th>
+                    <th>Original Reserve Price</th>
+                    <th>Stock</th>
+                    <th>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {products.map((product, index) => (
+                    <tr
+                      key={product._id}
+                      className="hover:bg-white/5 hover:shadow-xl hover:shadow-white/10 hover:translate-y-[-2px] transform transition-all duration-200 ease-out text-whiteLight cursor-pointer"
+                    >
+                      <td>{index + 1}</td>
+                      <td>
+                        <div className="avatar">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden">
+                            <img
+                              src={
+                                product?.images[0]?.key
+                                  ? `${cdnURL}${product.images[0].key}`
+                                  : "/placeholder-image.png"
+                              }
+                              alt={product?.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="max-w-[150px] text-whiteLight font-medium">
+                        <div className="truncate" title={product.title}>
+                          {product.title}
+                        </div>
+                      </td>
+                      <td className="text-whiteLight font-semibold">
+                        ₹ {product.startingPrice || "N/A"}
+                      </td>
+                      <td className="text-whiteLight font-semibold">
+                        ₹ {product.reservedPrice || "N/A"}
+                      </td>
+                      <td>
+                        <div className={`flex items-center gap-2 ${product.quantity <= 0 ? 'text-error font-semibold' : 'text-success font-semibold'}`}>
+                          <Package className="w-5 h-5" />
+                          <span>{product.quantity}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onSelect(product);
+                          }}
+                          className="btn btn-circle btn-sm bg-greenLight text-blackDark shadow-lg hover:from-green-600 hover:to-green-800 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75"
+                          data-tip="Select Product"
+                          aria-label="Select Product"
+                          title="Select Product"
+                        >
+                          <PlusCircle size={20} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
 
       {/* Selected Products Section */}
       {selected.length > 0 && (
-        <div className="card bg-white shadow-xl border">
-          <div className="px-3 py-2">
-            <div className="flex justify-between">
-              <h2 className="card-title text-xl font-bold mb-4 text-primaryBlack flex items-center gap-3">
-                Selected Auction Products
+        <div className="card bg-blackLight shadow-xl border border-gray-200 mt-6">
+          <div className="card-body p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="card-title text-2xl font-extrabold text-whiteLight flex items-center gap-3">
+                <Hammer className="w-6 h-6 text-newYellow" />
+                Your Selected Auction Products
               </h2>
-              <div className="relative right-0">
-                <ChevronDown
-                  size={24}
-                  className="text-primary animate-[glowPulse_3s_infinite] transition-all duration-300 hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
-              </div>
             </div>
             <div
-              className="overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
+              className="overflow-x-auto overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
               style={{
                 scrollbarWidth: "thin",
                 scrollbarColor: "#CBD5E0 #F7FAFC",
               }}
             >
               <table className="table w-full">
-                <thead className="sticky top-0 bg-white z-10">
-                  <tr className="bg-inputYellow text-primaryBlack">
+                <thead className="sticky top-0 bg-newYellow z-10 shadow-sm">
+                  <tr className="text-blackDark">
                     <th>#</th>
                     <th>Image</th>
                     <th>Title</th>
-                    <th>Start Price</th>
-                    <th>Reserve Price</th>
+                    <th>Set Start Price</th>
+                    <th>Set Reserve Price</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -660,60 +936,100 @@ const AuctionTabContent = ({
                   {selected.map((product, index) => (
                     <tr
                       key={product.productId}
-                      className="transition-all hover:inputYellow duration-300 ease-in-out transform hover:scale-103 hover:shadow-md"
+                      className="hover:bg-white/5 hover:shadow-xl hover:shadow-white/10 hover:translate-y-[-2px] transform transition-all duration-200 ease-out text-whiteLight cursor-pointer"
                     >
                       <td>{index + 1}</td>
                       <td>
                         <div className="avatar">
-                          <div className="w-10 rounded">
-                          <img
-                            src={product?.images[0]?.key ? `${cdnURL}${product.images[0].key}` : "/placeholder-image.png"}
-                            alt={product?.title}
-                            className="w-24 h-24 object-cover rounded-lg"
-                          />
+                          <div className="w-16 h-16 rounded-lg overflow-hidden">
+                            <img
+                              src={
+                                product?.images[0]?.key
+                                  ? `${cdnURL}${product.images[0].key}`
+                                  : "/placeholder-image.png"
+                              }
+                              alt={product?.title}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
                         </div>
                       </td>
-                      <td className="max-w-[200px] w-[200px] text-primaryBlack">
-                        <div className="truncate">{product.title}</div>
+                      <td className="max-w-[180px] text-whiteLight font-medium">
+                        <div className="truncate" title={product.title}>
+                          {product.title}
+                        </div>
                       </td>
                       <td>
-                        <input
-                          type="text"
-                          value={product.startingPrice}
-                          onChange={(e) =>
-                            onChange(
-                              product.productId,
-                              "startingPrice",
-                              e.target.value
-                            )
-                          }
-                          className={`input input-bordered input-primary text-primaryBlack font-bold bg-inputYellow input-md rounded-full w-full focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 ${
-                            getValidationError("auction", index, "starting")
-                              ? "input-error"
-                              : "input-primary"
-                          }`}
-                          placeholder="Start Price"
-                        />
+                        <label className="form-control w-full max-w-xs">
+                          <input
+                            type="text"
+                            value={product.startingPrice}
+                            onChange={(e) =>
+                              onChange(
+                                product.productId,
+                                "startingPrice",
+                                e.target.value
+                              )
+                            }
+                            className={`input input-bordered text-primaryBlack rounded-full font-bold bg-blackDark text-whiteLight w-[100px] ${
+                              getValidationError("auction", index, "starting")
+                                ? "input-error"
+                                : ""
+                            }`}
+                            placeholder="Start Price"
+                          />
+                          {getValidationError(
+                            "auction",
+                            index,
+                            "starting"
+                          ) && (
+                            <div className="label">
+                              <span className="label-text-alt text-error">
+                                {getValidationError(
+                                  "auction",
+                                  index,
+                                  "starting"
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </label>
                       </td>
                       <td>
-                        <input
-                          type="text"
-                          value={product.reservedPrice}
-                          onChange={(e) =>
-                            onChange(
-                              product.productId,
-                              "reservedPrice",
-                              e.target.value
-                            )
-                          }
-                          className={`input input-bordered input-primary text-primaryBlack font-bold bg-inputYellow input-md rounded-full w-full focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 ${
-                            getValidationError("auction", index, "reserved")
-                              ? "input-error"
-                              : "input-primary"
-                          }`}
-                          placeholder="Reserve Price"
-                        />
+                        <label className="form-control w-full max-w-xs">
+                          <input
+                            type="text"
+                            value={product.reservedPrice}
+                            onChange={(e) =>
+                              onChange(
+                                product.productId,
+                                "reservedPrice",
+                                e.target.value
+                              )
+                            }
+                            className={`input input-bordered rounded-full text-whiteLight font-bold bg-blackDark w-[100px] ${
+                              getValidationError("auction", index, "reserved")
+                                ? "input-error"
+                                : ""
+                            }`}
+                            placeholder="Reserve Price"
+                          />
+                          {getValidationError(
+                            "auction",
+                            index,
+                            "reserved"
+                          ) && (
+                            <div className="label">
+                              <span className="label-text-alt text-error">
+                                {getValidationError(
+                                  "auction",
+                                  index,
+                                  "reserved"
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </label>
                       </td>
                       <td>
                         <button
@@ -721,9 +1037,12 @@ const AuctionTabContent = ({
                             e.preventDefault();
                             onRemove(product.productId);
                           }}
-                          className="btn btn-error btn-sm animate-shake hover:animate-none flex items-center gap-2"
+                          className="btn btn-circle btn-sm bg-red-500 text-whiteLight shadow-lg hover:from-green-600 hover:to-green-800 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75"
+                          data-tip="Remove Product"
+                          aria-label="Remove Product"
+                          title="Remove Product"
                         >
-                          <Trash size={16} />
+                          <Trash size={20} />
                         </button>
                       </td>
                     </tr>
@@ -738,124 +1057,125 @@ const AuctionTabContent = ({
   );
 };
 
-// Updated GiveawayTabContent Component (global toggle removed; each product’s toggle is individual)
 const GiveawayTabContent = ({
   products,
   selected,
   onSelect,
   onRemove,
   onChange,
+  cdnURL,
 }) => {
-      const cdnURL = import.meta.env.VITE_AWS_CDN_URL;
   return (
-    <div className="container mx-auto space-y-2">
+    <div className="container mx-auto space-y-4">
       {/* Available Products Section */}
-      <div className="card bg-white shadow-xl border">
-        <div className="px-3 py-2">
-          <div className="flex justify-end">
-            <div className="relative right-0">
-              <ChevronDown
-                size={24}
-                className="text-primary animate-[glowPulse_1.5s_infinite] transition-all duration-300 hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
-            </div>
+      <div className="card bg-blackDark shadow-xl border ">
+        <div className="card-body p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="card-title text-2xl font-extrabold text-whiteLight flex items-center gap-3">
+              <PlusCircle className="w-6 h-6 text-newYellow" />
+              Available Products for Giveaway
+            </h2>
           </div>
 
           <div
-            className="overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
+            className="overflow-x-auto overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
             style={{
               scrollbarWidth: "thin",
               scrollbarColor: "#CBD5E0 #F7FAFC",
             }}
           >
-            <table className="table w-full">
-              <thead className="sticky top-0 bg-white z-10">
-                <tr className="bg-inputYellow text-primaryBlack">
-                  <th>#</th>
-                  <th>Image</th>
-                  <th>Title</th>
-                  <th>Stock</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product, index) => (
-                  <tr
-                    key={product.productId}
-                    className="transition-all duration-300 ease-in-out transform hover:scale-103 hover:shadow-md"
-                  >
-                    <td>{index + 1}</td>
-                    <td>
-                      <div className="avatar">
-                        <div className="w-10 rounded">
-                        <img
-                            src={product?.images[0]?.key ? `${cdnURL}${product.images[0].key}` : "/placeholder-image.png"}
-                            alt={product?.title}
-                            className="w-24 h-24 object-cover rounded-lg"
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="max-w-[150px] w-[150px] text-primaryBlack">
-                      <div className="truncate">{product.title}</div>
-                    </td>
-                    <td className="text-success font-semibold">
-                      <div className="flex items-center gap-2">
-                        <Box className="w-5 h-5" />
-                        <span>{product.quantity}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          onSelect(product);
-                        }}
-                        className="btn btn-ghost bg-green-200 btn-sm hover:animate-none flex items-center justify-center text-info"
-                        aria-label="Select Product"
-                        title="Select Product"
-                      >
-                        <PlusCircle
-                          size={22}
-                          className="text-success hover:text-success-focus"
-                        />
-                      </button>
-                    </td>
+            {products.length === 0 ? (
+              <div className="text-center py-10 text-gray-500 text-lg">
+                <p>No available products for giveaway matching your criteria.</p>
+                <p className="text-sm mt-1">Try adjusting your filters or search term.</p>
+              </div>
+            ) : (
+              <table className="table w-full">
+                <thead className="sticky top-0 bg-newYellow z-10 shadow-sm">
+                  <tr className="text-blackDark">
+                    <th>#</th>
+                    <th>Image</th>
+                    <th>Title</th>
+                    <th>Stock</th>
+                    <th>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {products.map((product, index) => (
+                    <tr
+                      key={product._id}
+                      className="hover:bg-white/5 hover:shadow-xl hover:shadow-white/10 hover:translate-y-[-2px] transform transition-all duration-200 ease-out text-whiteLight cursor-pointer"
+                    >
+                      <td>{index + 1}</td>
+                      <td>
+                        <div className="avatar">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden">
+                            <img
+                              src={
+                                product?.images[0]?.key
+                                  ? `${cdnURL}${product.images[0].key}`
+                                  : "/placeholder-image.png"
+                              }
+                              alt={product?.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="max-w-[180px] text-whiteLight font-medium">
+                        <div className="truncate" title={product.title}>
+                          {product.title}
+                        </div>
+                      </td>
+                      <td>
+                        <div className={`flex items-center gap-2 ${product.quantity <= 0 ? 'text-error font-semibold' : 'text-success font-semibold'}`}>
+                          <Package className="w-5 h-5" />
+                          <span>{product.quantity}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onSelect(product);
+                          }}
+                          className="btn btn-circle btn-sm bg-greenLight text-blackDark shadow-lg hover:from-green-600 hover:to-green-800 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75"
+                          data-tip="Select Product"
+                          aria-label="Select Product"
+                          title="Select Product"
+                        >
+                          <PlusCircle size={20} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
 
       {/* Selected Products Section */}
       {selected.length > 0 && (
-        <div className="card bg-white shadow-xl border">
-          <div className="px-3 py-2">
-            <div className="flex justify-between">
-              <h2 className="card-title text-xl font-bold mb-4 text-primaryBlack flex items-center gap-3">
-                Selected Giveaway Products
+        <div className="card bg-blackLight shadow-xl border border-gray-200 mt-6">
+          <div className="card-body p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="card-title text-2xl font-extrabold text-whiteLight flex items-center gap-3">
+                <Gift className="w-6 h-6 text-newYellow" />
+                Your Selected Giveaway Products
               </h2>
-              <div className="relative right-0">
-                <ChevronDown
-                  size={24}
-                  className="text-primary animate-[glowPulse_3s_infinite] transition-all duration-300 hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
-              </div>
             </div>
             <div
-              className="overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
+              className="overflow-x-auto overflow-y-auto max-h-[500px] pr-2 custom-scrollbar"
               style={{
                 scrollbarWidth: "thin",
                 scrollbarColor: "#CBD5E0 #F7FAFC",
               }}
             >
               <table className="table w-full">
-                <thead className="sticky top-0 bg-white z-10">
-                  <tr className="bg-inputYellow text-primaryBlack">
+                <thead className="sticky top-0 bg-newYellow z-10 shadow-sm">
+                  <tr className="text-blackDark">
                     <th>#</th>
                     <th>Image</th>
                     <th>Title</th>
@@ -867,32 +1187,40 @@ const GiveawayTabContent = ({
                   {selected.map((product, index) => (
                     <tr
                       key={product.productId}
-                      className="transition-all hover:inputYellow duration-300 ease-in-out transform hover:scale-103 hover:shadow-md"
+                      className="hover:bg-white/5 hover:shadow-xl hover:shadow-white/10 hover:translate-y-[-2px] transform transition-all duration-200 ease-out text-whiteLight cursor-pointer"
                     >
                       <td>{index + 1}</td>
                       <td>
                         <div className="avatar">
-                          <div className="w-10 rounded">
-                          <img
-                           src={product?.images[0]?.key ? `${cdnURL}${product.images[0].key}` : "/placeholder-image.png"}
-                            alt={product?.title}
-                            className="w-24 h-24 object-cover rounded-lg"
-                          />
+                          <div className="w-16 h-16 rounded-lg overflow-hidden">
+                            <img
+                              src={
+                                product?.images[0]?.key
+                                  ? `${cdnURL}${product.images[0].key}`
+                                  : "/placeholder-image.png"
+                              }
+                              alt={product?.title}
+                              className="w-full h-full object-full"
+                            />
                           </div>
                         </div>
                       </td>
-                      <td className="max-w-[200px] w-[200px] text-primaryBlack">
-                        <div className="truncate">{product.title}</div>
+                      <td className="max-w-[180px] text-whiteLight font-medium">
+                        <div className="truncate" title={product.title}>
+                          {product.title}
+                        </div>
                       </td>
                       <td>
-                        <input
-                          type="checkbox"
-                          checked={product.followersOnly}
-                          onChange={(e) =>
-                            onChange(product.productId, e.target.checked)
-                          }
-                          className="toggle toggle-primary"
-                        />
+                        <label className="label cursor-pointer bg-whiteHalf rounded-full justify-center">
+                          <input
+                            type="checkbox"
+                            checked={product.followersOnly}
+                            onChange={(e) =>
+                              onChange(product.productId, e.target.checked)
+                            }
+                            className="toggle toggle-warning toggle-md"
+                          />
+                        </label>
                       </td>
                       <td>
                         <button
@@ -900,9 +1228,12 @@ const GiveawayTabContent = ({
                             e.preventDefault();
                             onRemove(product.productId);
                           }}
-                          className="btn btn-error btn-sm animate-shake hover:animate-none flex items-center gap-2"
+                          className="btn btn-circle btn-sm bg-red-500 text-whiteLight shadow-lg hover:from-green-600 hover:to-green-800 hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75"
+                          data-tip="Remove Product"
+                          aria-label="Remove Product"
+                          title="Remove Product"
                         >
-                          <Trash size={16} />
+                          <Trash size={20} />
                         </button>
                       </td>
                     </tr>

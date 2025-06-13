@@ -34,7 +34,6 @@ const AuctionsOverlay = ({ streamId, show, currentAuction }) => {
     const [uniqueStreamId, setUniqueStreamId] = useState(null);
     const [auctionNum, setAuctionNum] = useState(currentAuction?.auctionNumber || null)
 
-    console.log(currentAuction);
 
     useEffect(() => {
         // setHighestBid(currentAuction?.currentHighestBid || 0);
@@ -83,7 +82,7 @@ const AuctionsOverlay = ({ streamId, show, currentAuction }) => {
         });
 
         socket.on("timerUpdate", (data) => {
-            console.log("⏳ Timer update received:", data);
+            // console.log("⏳ Timer update received:", data);
             if (data.remainingTime !== undefined) {
                 setTimer(data.remainingTime);
                 setIsActive(data.remainingTime > 0);
@@ -148,15 +147,37 @@ const AuctionsOverlay = ({ streamId, show, currentAuction }) => {
     };
 
     const handleBid = (newBid) => {
-        if (newBid > highestBid && isActive && user) {
+        if (isActive && user) {
             socket.emit('placeBid', {
                 streamId,
                 user,
                 amount: newBid,
-                uniqueStreamId: uniqueStreamId || currentAuction?.uniqueStreamId
+                uniqueStreamId: uniqueStreamId || currentAuction?.uniqueStreamId,
+                // bidDirection: currentAuction?.bidDirection || 'decremental'
             });
         }
     };
+
+    // const handleBid = (newBid) => {
+    //     console.log("handleBid called with newBid:", newBid);
+    //     console.log("Current Auction Bid dir:", currentAuction.bidDirection);
+    //     const direction = currentAuction?.bidDirection || 'incremental';
+    //     const isValidBid =
+    //         (direction === 'incremental' && newBid > highestBid) ||
+    //         (direction === 'decremental' && newBid < highestBid);
+    //     console.log("isValidBid:", isValidBid);
+
+    //     if (isValidBid && isActive && user) {
+    //         socket.emit('placeBid', {
+    //             streamId,
+    //             user,
+    //             amount: newBid,
+    //             uniqueStreamId: uniqueStreamId || currentAuction?.uniqueStreamId,
+    //             bidDirection: direction
+    //         });
+    //     }
+    // };
+
 
     // from backend
     const calculateNextBids = () => {
@@ -266,7 +287,7 @@ const AuctionsOverlay = ({ streamId, show, currentAuction }) => {
                         )}
                     </div>
 
-                    <div className='hidden gap-2'>
+                    {/* <div className='hidden gap-2'>
                         <button
                             onClick={() => handleBid(nextBid1)}
                             disabled={!isActive || !user || user?._id === highestBidder?._id}
@@ -281,7 +302,7 @@ const AuctionsOverlay = ({ streamId, show, currentAuction }) => {
                         >
                             Bid <IndianRupee size={12} />{nextBid2.toLocaleString()}
                         </button>
-                    </div>
+                    </div> */}
                 </div>
             </div>
             {/* )} */}

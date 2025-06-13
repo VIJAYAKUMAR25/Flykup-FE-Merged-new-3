@@ -37,11 +37,11 @@ const RightDrawerContent = ({ isOpen, onClose, user, logout }) => {
 
           {/* Drawer Panel */}
           <motion.div
-            className="fixed top-0 right-0 h-full w-80 bg-primaryBlack z-50 shadow-xl" // Style from original
+            className="fixed top-0 right-0 h-full w-80 bg-primaryBlack z-50 shadow-xl" 
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ duration: 0.3, ease: "easeIn" }} // Match duration/ease
+            transition={{ duration: 0.3, ease: "easeIn" }} 
           >
             {/* Sticky Close Button Area */}
             <div className="sticky top-0 bg-primaryBlack p-4 z-10">
@@ -49,19 +49,15 @@ const RightDrawerContent = ({ isOpen, onClose, user, logout }) => {
                 onClick={onClose} // Use onClose prop
                 className="absolute top-2 right-2 p-1 bg-slate-300 rounded-full hover:bg-primaryYellow transition-colors duration-200 group" // Added group for potential parent hover effects if needed later
               >
-                <X className="h-6 w-6 text-black group-hover:text-black" /> {/* Ensure X icon renders */}
+                <X className="h-6 w-6 text-black group-hover:text-black" /> 
               </button>
             </div>
 
-            {/* Scrollable Content Area */}
-            {/* Adjusted height calculation and added overflow */}
-            <div className="h-[calc(100vh-4rem)] overflow-y-auto mt-1 px-4 pb-4 custom-scrollbar"> {/* Adjusted margin top slightly */}
-
-              {/* Profile Content */}
+            <div className="h-[calc(100vh-4rem)] overflow-y-auto mt-1 px-4 pb-4 custom-scrollbar"> 
               <div className="p-4 border-b border-stone-700 flex items-center justify-between">
                 <div
                   className="flex items-center gap-3 cursor-pointer"
-                  onClick={() => navigate(`/user/user/${user?.userName}`)}
+                  
                 >
                   <div className="avatar placeholder">
                     <div className="avatar ring-0">
@@ -87,47 +83,44 @@ const RightDrawerContent = ({ isOpen, onClose, user, logout }) => {
                     <p className="text-sm text-stone-400">{user?.emailId || "email@example.com"}</p>
                   </div>
                 </div>
-                {/* <button onClick={toggleDrawer} className="btn btn-sm btn-circle hover:bg-stone-800">
-                  <X className="w-5 h-5 text-black hover:text-white" />
-                </button> */}
               </div>
 
               {/* User/Seller Tabs */}
-              <div className="relative p-1 bg-primaryYellow rounded-xl shadow-lg mb-4"> {/* Increased mb */}
+              <div className="relative p-1 bg-primaryYellow rounded-xl shadow-lg mb-4">
                 <div className="flex gap-1 relative z-10">
                   {/* User Tab Button */}
                   <button
-                    className={`flex-1 px-4 py-2 rounded-lg font-bold transition-all duration-300 transform ${ // Adjusted padding
+                    className={`flex-1 px-4 py-2 rounded-lg font-bold transition-all duration-300 transform ${ 
                         activeTab === "user"
-                        ? "bg-primaryWhite text-black shadow-lg scale-105" // Removed hover:scale-105 when active
+                        ? "bg-primaryWhite text-black shadow-lg scale-105" 
                         : "text-primaryBlack hover:bg-white/30 hover:scale-105"
                       }`}
                     onClick={() => setActiveTab("user")}
                   >
                     <div className="flex items-center justify-center gap-2 text-sm">
-                      <img src={Profile} width={20} height={20} alt="User Icon" /> {/* Adjusted size */}
+                      <img src={Profile} width={20} height={20} alt="User Icon" /> 
                       User
                     </div>
                   </button>
 
                   {/* Seller Tab Button */}
                   <button
-                     className={`flex-1 px-4 py-2 rounded-lg font-bold transition-all duration-300 transform ${ // Adjusted padding
+                     className={`flex-1 px-4 py-2 rounded-lg font-bold transition-all duration-300 transform ${ 
                         activeTab === "seller"
-                        ? "bg-primaryWhite text-black shadow-lg scale-105" // Removed hover:scale-105 when active
+                        ? "bg-primaryWhite text-black shadow-lg scale-105" 
                         : "text-primaryBlack hover:bg-white/30 hover:scale-105"
                       }`}
                     onClick={() => setActiveTab("seller")}
                   >
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <svg
-                        className={`w-5 h-5 transition-transform duration-300 ${ // Ensure SVG displays
+                        className={`w-5 h-5 transition-transform duration-300 ${ 
                           activeTab === "seller" ? "scale-110" : ""
                         }`}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
-                        strokeWidth={2} // Added strokeWidth
+                        strokeWidth={2} 
                       >
                         <path
                           strokeLinecap="round"
@@ -165,24 +158,7 @@ const RightDrawerContent = ({ isOpen, onClose, user, logout }) => {
                         </p>
                       </Link>
                     </li>
-                    {/* <li className="bg-primaryBlack rounded-lg transform transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-blue-500 cursor-pointer group">
-                      <Link to={"/profile/giveaway"} className="flex items-center gap-4 p-3" onClick={onClose}>
-                        <div className="bg-primaryYellow p-1.5 rounded-full transform transition-transform duration-300 group-hover:rotate-12">
-                         
-                          <img
-                            src={Homeicon}
-                            alt="Giveaway"
-                            width={20}
-                            height={20}
-                            className="transform transition-transform group-hover:scale-110"
-                          />
-                        </div>
-                        <p className="text-white font-bold transition-colors duration-300 group-hover:text-white">
-                          Giveaway
-                        </p>
-                      </Link>
-                    </li> */}
-                     {/* --- Add other user menu items here following the pattern --- */}
+
                      {/* Example: Shows (if uncommented) */}
                      <li className="bg-primaryBlack rounded-lg transform transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-blue-500 cursor-pointer group">
                        <Link to={"/profile/shows"} className="flex items-center gap-4 p-3" onClick={onClose}>
@@ -196,14 +172,13 @@ const RightDrawerContent = ({ isOpen, onClose, user, logout }) => {
                     {/* Logout Button (User) */}
                     <li
                       onClick={() => {
-                        logout(); // Call logout function
-                        // Optionally close the drawer after logout attempt
-                        // onClose();
+                        logout(); 
+
                       }}
                       className="bg-primaryBlack rounded-lg transform transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-red-600 cursor-pointer group" // Changed hover color for logout
                     >
-                      {/* Using <a> tag semantically correct for non-navigation action, but could be <button> */}
-                      <div className="flex items-center gap-4 p-3"> {/* Changed to div, added items-center, padding */}
+                    
+                      <div className="flex items-center gap-4 p-3">
                         <div className="bg-error p-1.5 rounded-full transform transition-transform duration-300 group-hover:rotate-12"> {/* Use actual error color, adjusted padding */}
                           <img
                             src={Logout}
@@ -226,11 +201,11 @@ const RightDrawerContent = ({ isOpen, onClose, user, logout }) => {
                       <Link
                         to="/seller/allshows"
                         className="flex items-center gap-4 p-3"
-                        onClick={onClose} // Close drawer on navigation
+                        onClick={onClose} 
                       >
                         <div className="bg-primaryYellow p-1.5 rounded-full transform transition-transform duration-300 group-hover:rotate-12">
                           <img
-                            src={Reels} // Using Reels icon as per your example
+                            src={Reels} 
                             alt="Your Shows"
                             width={20}
                             height={20}
@@ -246,11 +221,11 @@ const RightDrawerContent = ({ isOpen, onClose, user, logout }) => {
                       <Link
                         to="/seller/productlisting"
                         className="flex items-center gap-4 p-3"
-                        onClick={onClose} // Close drawer on navigation
+                        onClick={onClose} 
                       >
                         <div className="bg-primaryYellow p-1.5 rounded-full transform transition-transform duration-300 group-hover:rotate-12">
                           <img
-                            src={ViewProducts} // Using ViewProducts icon
+                            src={ViewProducts}
                             alt="Product Listing"
                             width={20}
                             height={20}
@@ -262,35 +237,14 @@ const RightDrawerContent = ({ isOpen, onClose, user, logout }) => {
                         </p>
                       </Link>
                     </li>
-                    {/* <li className="bg-primaryBlack rounded-lg transform transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-blue-500 cursor-pointer group">
-                      <Link
-                        to={"/seller/myprofile"}
-                        className="flex items-center gap-4 p-3"
-                         onClick={onClose} // Close drawer on navigation
-                      >
-                        <div className="bg-primaryYellow p-1.5 rounded-full transform transition-transform duration-300 group-hover:rotate-12">
-                          <img
-                            src={Profile} // Using Profile icon
-                            alt="My Profile"
-                            width={20}
-                            height={20}
-                            className="transform transition-transform group-hover:scale-110"
-                          />
-                        </div>
-                        <p className="text-white font-bold transition-colors duration-300 group-hover:text-white">
-                          My Profile
-                        </p>
-                      </Link>
-                    </li> */}
-                    {/* Logout Button (Seller) */}
+
                     <li
                       onClick={() => {
                         logout();
-                        // onClose(); // Optional: close drawer
                       }}
                       className="bg-primaryBlack rounded-lg transform transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-red-600 cursor-pointer group" // Changed hover color for logout
                     >
-                      <div className="flex items-center gap-4 p-3"> {/* Changed to div, added items-center, padding */}
+                      <div className="flex items-center gap-4 p-3"> 
                         <div className="bg-error p-1.5 rounded-full transform transition-transform duration-300 group-hover:rotate-12">
                           <img
                             src={Logout}
@@ -308,8 +262,8 @@ const RightDrawerContent = ({ isOpen, onClose, user, logout }) => {
                   </>
                 )}
               </ul>
-            </div> {/* End Scrollable Content Area */}
-          </motion.div> {/* End Drawer Panel */}
+            </div> 
+          </motion.div> 
         </>
       )}
     </AnimatePresence>

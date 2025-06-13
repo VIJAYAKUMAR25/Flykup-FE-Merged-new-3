@@ -941,7 +941,7 @@ const LiveStreamProductForm = () => {
                                                          <label className="label pb-1"><span className="label-text font-medium flex items-center text-whiteLight"><Weight className="w-4 h-4 mr-2 text-newYellow" /> Item Weight{getLabelSuffix('weight')}</span></label>
                                                          <div className="flex gap-2 items-center">
                                                              <input type="text" placeholder="Value" value={productDetails.weight.value} onChange={handleNestedChange("weight", "value")} onInput={handleNumericInput} className={`input input-bordered focus:input-focus bg-blackLight text-whiteLight flex-grow ${errors.weight ? 'input-error' : ''}`} required={isFieldRequired('weight')} />
-                                                             <div className="relative w-1/3">
+                                                             <div className="relative w-2/3">
                                                                  <select name="unit" value={productDetails.weight.unit} onChange={handleNestedChange("weight", "unit")} className={`select select-bordered focus:select-focus bg-blackLight text-whiteLight appearance-none w-full ${errors.weight ? 'select-error' : ''}`} required={isFieldRequired('weight')}>
                                                                      <option value="grams">grams</option><option value="kilograms">kilograms</option><option value="ml">ml</option><option value="litre">litre</option><option value="pounds">pounds</option><option value="ounces">ounces</option>
                                                                  </select>
@@ -1130,7 +1130,7 @@ const LiveStreamProductForm = () => {
                                                     
                                                      {productDetails.returnPolicy.length < 6 && (
                                                          <div className="flex gap-2">
-                                                             <input type="text" value={returnPolicyInput} onChange={(e) => setReturnPolicyInput(e.target.value)} className="input input-bordered input-sm focus:input-focus bg-blackLight text-whiteLight flex-1" placeholder="Add term (e.g., 7-day return)" maxLength={50}/>
+                                                             <input type="text" value={returnPolicyInput} onChange={(e) => setReturnPolicyInput(e.target.value)} className="input input-bordered input-sm focus:input-focus bg-blackLight text-whiteLight flex-1" placeholder="Add term (e.g., 7-day return)" maxLength={150}/>
                                                              <button type="button" onClick={addReturnPolicy} className="btn btn-sm btn-ghost bg-newYellow text-blackDark px-3 cursor-pointer" disabled={!returnPolicyInput.trim() || productDetails.returnPolicy.length >= 6} aria-label="Add return policy term"><Plus className="w-4 h-4 mr-1" /> Add</button>
                                                          </div>
                                                      )}

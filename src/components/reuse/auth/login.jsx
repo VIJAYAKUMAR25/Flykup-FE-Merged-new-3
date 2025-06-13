@@ -69,7 +69,6 @@ const Login = ({ inputData, setInputData }) => {
           password: formData.password
         });
 
-        console.log("Login successful:", data);
 
         if (data.action === "verifyOtp") {
           setInputData((prev) => ({

@@ -156,10 +156,10 @@ const validateVideoFile = (file) => {
     'video/x-msvideo', 
     'video/x-m4v',     
     'video/quicktime',  
-    'video/avi',        
+      
   ];
 
-  const supportedExtensions = ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'];
+  const supportedExtensions = ['mp4', 'mov', 'webm', 'mkv', 'm4v'];
 
   const fileName = file.name || '';
   const fileMimeType = file.type || ''; 
@@ -618,11 +618,10 @@ useEffect(() => {
             className="inline-flex items-center gap-2 px-1 py-1 rounded-full bg-newYellow shadow-sm border border-yellow-200 text-gray-800 hover:bg-white hover:shadow transition-all duration-200 group"
           >
             <ArrowLeft size={24} className="text-blackDark group-hover:transform group-hover:-translate-x-1 transition-transform" />
-           
           </Link>
           <div className="flex justify-center items-center ">
             <h1 className="text-newYellow text-2xl lg:text-3xl md:text-3xl  font-bold text-center">
-            Create Shopable Video
+            Create Shoppable Video
             </h1>
           </div>
            {!isEditMode && (
@@ -630,6 +629,9 @@ useEffect(() => {
                 onClick={() => setShowResetModal(true)} disabled={isAnyLoading}>
                 <RotateCcw className="h-4 w-4 font-bold" /> 
               </button>
+            )}
+             {isEditMode && (
+              <div></div >
             )}
         </div>
         <div className="p-3 lg:p-8 pt-0 overflow-y-auto flex-grow"> 
@@ -763,7 +765,7 @@ useEffect(() => {
                         <button
                           type="button"
                           onClick={resetImageState}
-                          className="btn btn-circle btn-xs bg-red-500 hover:bg-red-600 text-white absolute -top-2 -right-2 shadow-lg"
+                          className="btn btn-circle z-50 btn-xs bg-red-500 hover:bg-red-600 text-white absolute -top-2 -right-2 shadow-lg"
                           disabled={isAnyLoading}
                         >
                           <X size={14} />
@@ -836,7 +838,7 @@ useEffect(() => {
                           <button
                             type="button"
                             onClick={resetVideoState}
-                            className="btn btn-circle btn-xs bg-red-500 hover:bg-red-600 text-white absolute -top-2 -right-2 shadow-lg"
+                            className="btn btn-circle z-50 btn-xs bg-red-500 hover:bg-red-600 text-white absolute -top-2 -right-2 shadow-lg"
                           >
                             <X size={14} />
                           </button>
@@ -974,13 +976,13 @@ useEffect(() => {
       </div>
 
       {showResetModal && (
-        <div className="modal modal-open" role="dialog">
-          <div className="modal-box bg-white text-gray-800">
-            <h3 className="font-bold text-lg text-red-600 flex items-center gap-2"><AlertCircle />Confirm Reset</h3>
-            <p className="py-4">Are you sure you want to reset the form? All entered data and uploads will be cleared.</p>
+        <div className="modal modal-open shadow-xl" role="dialog">
+          <div className="modal-box bg-blackLight text-gray-800">
+            <h3 className="font-bold text-lg text-whiteLight flex items-center gap-2 "><AlertCircle className="text-red-500" />Confirm Reset</h3>
+            <p className="py-4 text-whiteHalf">Are you sure you want to reset the form? All entered data and uploads will be cleared.</p>
             <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => setShowResetModal(false)}>Cancel</button>
-              <button className="btn btn-error text-white" onClick={() => resetForm(true)}>Reset Form</button>
+              <button className="btn btn-ghost bg-white/30 rounded-full" onClick={() => setShowResetModal(false)}>Cancel</button>
+              <button className="btn btn-error rounded-full text-whiteLight" onClick={() => resetForm(true)}>Reset Form</button>
             </div>
           </div>
           <div className="modal-backdrop bg-black bg-opacity-30" onClick={() => setShowResetModal(false)}></div>

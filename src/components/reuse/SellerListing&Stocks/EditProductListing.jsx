@@ -833,7 +833,7 @@ const EditProductListing = () => {
                                             <label className="label pb-1">
                                                 <span className="label-text font-medium text-whiteLight flex items-center"> <Archive className="w-4 h-4 mr-2 text-newYellow" /> Stock Quantity <span className="text-red-500">&nbsp; *</span> </span>
                                             </label>
-                                            <input type="number" min="0" step="1" name="quantity" value={productDetails.quantity} onChange={handleChange} placeholder="Available stock count" className={`input input-bordered w-full focus:input-focus bg-blackLight ${errors.quantity ? 'input-error' : ''} ${productDetails.quantity ? 'text-whiteLight' : 'text-whiteHalf'}`} required />
+                                            <input type="number" min="0" step="1" name="quantity" value={productDetails.quantity} onChange={handleChange} placeholder="Available stock count" disabled className={`input input-bordered w-full focus:input-focus bg-blackLight ${errors.quantity ? 'input-error' : ''} ${productDetails.quantity ? 'text-whiteLight' : 'text-whiteHalf'}`} required />
                                             {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
                                         </div>
                                         {/* HSN (Render based on dynamic rules) */}

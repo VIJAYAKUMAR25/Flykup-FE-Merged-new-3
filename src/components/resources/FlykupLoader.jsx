@@ -81,7 +81,7 @@ const FlykupLoader = ({ text = "Loading Flykup..." }) => {
       {/* Loading text and message */}
       <div className="text-center relative z-10">
         <div className="text-2xl font-bold text-yellow-400 tracking-wide">{text}</div>
-        <div className="text-lg text-stone-300 mt-2 font-light">Preparing your Shoping experience</div>
+        <div className="text-lg text-stone-300 mt-2 font-light">Preparing your Shopping experience</div>
         <div className="mt-4 text-sm text-yellow-400 font-mono">
           {progress < 100 ? `${progress}% complete` : "Ready to fly!"}
         </div>

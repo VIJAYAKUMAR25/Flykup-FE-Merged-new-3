@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import io from "socket.io-client"
-import { Trophy, IndianRupee, Gavel, Clock, PlayIcon, XCircle, AlertCircle, Timer } from "lucide-react"
+import { Trophy, IndianRupee, Gavel, Clock, PlayIcon, XCircle, AlertCircle, Timer, ArrowUp, ArrowDown } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FaPlay } from "react-icons/fa"
 import { RiCloseLargeFill } from "react-icons/ri"
@@ -26,11 +26,15 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
   // Admin Functions
   const [customTime, setCustomTime] = useState(30)
   const [startingBid, setStartingBid] = useState(product?.startingPrice || 0)
+  const [reservedPrice, setReservedPrice] = useState(product?.reservedPrice || 0)
   const [auctionType, setAuctionType] = useState("default")
   const [increment, setIncrement] = useState(2)
   const [showModal, setShowModal] = useState(false)
   const [bidHistory, setBidHistory] = useState([])
   const [uniqueStreamId, setUniqueStreamId] = useState("")
+  const [bidDirection, setBidDirection] = useState("incremental"); // 'incremental' or 'decremental'
+  const [bidReserveError, setBidReserveError] = useState(null);
+
 
   useEffect(() => {
     setBidderWon(product.bidderWon || null)
@@ -43,7 +47,6 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
     socket.on("auctionStarted", (data) => {
       console.log("🚀 Auction started:", data)
       if (data.product !== product.productId._id) return
-      // ensure this event is for this auction
       setHighestBid(data.startingBid)
       setIsAuctionStarted(true)
       setIsActive(true)
@@ -109,6 +112,34 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
     }
   }, [streamId])
 
+  // --- Validation Effect for Bid/Reserve Price ---
+  useEffect(() => {
+    const startNum = parseFloat(startingBid);
+    const reserveNum = parseFloat(reservedPrice);
+
+    // Reset error first
+    setBidReserveError(null);
+
+    // Validation only applies if reserve price is entered and valid
+    if (reservedPrice && !isNaN(reserveNum) && reserveNum > 0) {
+      // Check if starting bid is also valid before comparing
+      if (!isNaN(startNum) && startNum > 0) {
+        if (bidDirection === "incremental" && startNum >= reserveNum) {
+          setBidReserveError("Starting bid must be less than the reserved price.");
+        } else if (bidDirection === "decremental" && startNum <= reserveNum) {
+          setBidReserveError("Starting price must be greater than the reserved price.");
+        }
+      } else if (startingBid) {
+        // Starting bid is required if reserve is set, handle this via button disable maybe
+        // Or set error: setBidReserveError("Starting bid is required and must be positive.");
+      }
+    } else if (reservedPrice && (isNaN(reserveNum) || reserveNum <= 0)) {
+      // Optional: Validate that if reserve price is entered, it's valid > 0
+      setBidReserveError("Reserved price must be a valid number greater than 0.");
+    }
+
+  }, [startingBid, reservedPrice, bidDirection]);
+
   const formatTime = (ms) => {
     const seconds = Math.floor(ms / 1000) // Convert milliseconds to seconds
     const mins = Math.floor(seconds / 60)
@@ -154,18 +185,22 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
         streamId,
         product: product.productId._id,
         timer: customTime,
+        bidDirection,
         auctionType,
         increment: null,
         startingBid: Number(startingBid),
+        reservedPrice: Number(reservedPrice),
       })
     } else {
       socket.emit("startAuction", {
         streamId,
         product: product.productId._id,
         timer: customTime,
+        bidDirection,
         auctionType,
         increment,
         startingBid: Number(startingBid),
+        reservedPrice: Number(reservedPrice),
       })
     }
   }
@@ -173,7 +208,7 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
   const [nextBid1, nextBid2] = calculateNextBids()
 
   return (
-    <div className="w-full bg-stone-900 shadow-lg rounded-xl overflow-hidden border border-stone-800">
+    <div className="w-full bg-stone-900 shadow-lg rounded-xl overflow-hidden ">
       {/* Header with timer and controls */}
       <div className="flex justify-between items-center p-3 bg-stone-800 border-b border-stone-700">
         <div className="flex items-center gap-2">
@@ -212,7 +247,7 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
       </div>
 
       {/* Product details */}
-      <div className="p-4">
+      <div className="p-1">
         <div className="flex items-center space-x-4 bg-stone-950/50 p-3 rounded-lg border border-stone-800">
           <div className="w-24 h-24 bg-stone-800 rounded-lg overflow-hidden flex items-center justify-center">
             <img
@@ -332,6 +367,45 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
                 </label>
               </div>
 
+              {/* ----- New Bid Direction Radio Buttons ----- */}
+              <div className="bg-stone-800 p-3 rounded-xl">
+                <label className="block mb-3 text-sm font-medium text-white">Bidding Direction</label>
+                <div className="flex items-center gap-6"> {/* Increased gap */}
+                  {/* Incremental Option */}
+                  <label htmlFor="incrementalRadio" className="flex items-center gap-2 cursor-pointer text-sm text-stone-200 hover:text-white">
+                    <input
+                      type="radio"
+                      id="incrementalRadio"
+                      name="bidDirection"
+                      value="incremental"
+                      checked={bidDirection === "incremental"}
+                      onChange={(e) => setBidDirection(e.target.value)}
+                      className="w-4 h-4 text-amber-600 bg-stone-700 border-stone-600 focus:ring-amber-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900"
+                    />
+                    <ArrowUp className={`w-4 h-4 ${bidDirection === 'incremental' ? 'text-green-500' : 'text-stone-400'}`} />
+                    Incremental
+                  </label>
+
+                  {/* Decremental Option */}
+                  <label htmlFor="decrementalRadio" className="flex items-center gap-2 cursor-pointer text-sm text-stone-200 hover:text-white">
+                    <input
+                      type="radio"
+                      id="decrementalRadio"
+                      name="bidDirection"
+                      value="decremental"
+                      checked={bidDirection === "decremental"}
+                      // disabled
+                      placeholder="Not available"
+                      onChange={(e) => setBidDirection(e.target.value)}
+                      className="w-4 h-4 text-amber-600 bg-stone-700 border-stone-600 focus:ring-amber-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900"
+                    />
+                    <ArrowDown className={`w-4 h-4 ${bidDirection === 'decremental' ? 'text-red-500' : 'text-stone-400'}`} />
+                    Decremental
+                  </label>
+                </div>
+              </div>
+              {/* ----- End New Bid Direction Radio Buttons ----- */}
+
               {/* Increment Selection (only for default auction type) */}
               {auctionType === "default" && (
                 <div className="bg-stone-800 p-3 rounded-xl">
@@ -350,17 +424,45 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
                 </div>
               )}
 
-              {/* Starting Bid Input */}
-              <div className="bg-stone-800 p-3 rounded-xl">
-                <label className="block mb-2 text-sm font-medium text-white">Starting Bid (₹)</label>
-                <div className="relative">
-                  <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400 w-4 h-4" />
-                  <input
-                    type="number"
-                    value={startingBid}
-                    onChange={(e) => setStartingBid(e.target.value)}
-                    className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500"
-                  />
+              <div className="bg-stone-800 p-1 flex flex-col rounded-xl">
+                <div className="flex gap-1">
+                  {/* Starting Bid Input */}
+                  <div className="bg-stone-800 p-3 rounded-xl">
+                    <label className="block mb-2 text-sm font-medium text-white">Starting Bid (₹)</label>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400 w-4 h-4" />
+                      <input
+                        type="number"
+                        value={startingBid}
+                        onChange={(e) => setStartingBid(e.target.value)}
+                        className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Reserved price Input */}
+                  <div className="bg-stone-800 p-3 rounded-xl">
+                    <label className="block mb-2 text-sm font-medium text-white">Reserved Price (₹)</label>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400 w-4 h-4" />
+                      <input
+                        type="number"
+                        value={reservedPrice}
+                        onChange={(e) => setReservedPrice(e.target.value)}
+                        className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3">
+                  {/* ----- Validation Error Display ----- */}
+                  {bidReserveError && (
+                    <p className="text-red-500 text-xs flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      {bidReserveError}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -373,16 +475,24 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
                     type="number"
                     value={customTime}
                     onChange={handleSetTimer}
-                    className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500"
+                    className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500 rounded-full"
                   />
                 </div>
               </div>
+
+
 
               {/* Action Buttons */}
               <div className="flex justify-center gap-4 pt-2">
                 <button
                   onClick={confirmStartAuction}
-                  className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg flex items-center gap-2 transition-colors"
+                  disabled={
+                    !startingBid || Number(startingBid) <= 0 || // Must have positive starting bid
+                    !customTime || Number(customTime) < 10 || // Must have time >= 10s (example)
+                    (reservedPrice !== "" && Number(reservedPrice) <= 0) || // If reserve set, must be positive
+                    !!bidReserveError // Disabled if specific bid/reserve error exists
+                  }
+                  className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FaPlay className="w-3.5 h-3.5" />
                   Start Auction
@@ -402,5 +512,5 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
   )
 }
 
-export default Auctions
+export default Auctions;
 

@@ -261,7 +261,7 @@ const ShowDetailsShipper = () => {
     // Share handler for the show page
     const handleShare = async () => {
         // Use the current location as the shareable link
-        const shareUrl = `${window.location.origin}/profile/show/${showId}`
+        const shareUrl = `${window.location.origin}/home/show/${showId}`
         if (navigator.share) {
             try {
                 await navigator.share({

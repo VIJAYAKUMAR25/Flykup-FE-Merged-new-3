@@ -11,7 +11,6 @@ const CohostSearchInvite = ({ onInvite, onClose, showId }) => {
   const [activeCohost, setActiveCohost] = useState(null);
   const debouncedSearchText = useDebounce(searchText, 500);
 
-  // Fetch users for cohost search
   useEffect(() => {
     const fetchUsers = async () => {
       if (!debouncedSearchText) return;
@@ -21,9 +20,8 @@ const CohostSearchInvite = ({ onInvite, onClose, showId }) => {
         const response = await axiosInstance.get(COHOST_SEARCH, {
           params: { search: debouncedSearchText }
         });
-        
+        console.log('API Response Data:', response.data);
         const receivedData = response.data?.data || [];
-        // Filter out already invited users
         const filteredUsers = receivedData.filter(user => 
           !activeCohost || user.userId !== activeCohost.cohost.userId
         );

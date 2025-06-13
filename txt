@@ -889,3 +889,726 @@ const videoId = response.data?.data?._id;
                                   </td>
                                 </tr>
                               ))}
+
+
+
+
+
+
+                              import { useEffect, useRef, useState, useCallback } from "react";
+                              import { MessageCircle, Volume2, ArrowLeft, LucideWallet } from "lucide-react";
+                              import { X, Clock, Package, Gavel, Users } from "lucide-react"; // Removed Video, Camera, CameraOff, Mic, MicOff
+                              import LikeButton from "./ui/LikeButton";
+                              import { useNavigate, useParams, UNSAFE_NavigationContext } from "react-router-dom"; // Added UNSAFE_NavigationContext
+                              import { socketurl } from "../../../config";
+                              import axios from "axios";
+                              import LiveComments from "./LiveComments";
+                              import io from "socket.io-client";
+                              import Auctions from "./Auctions";
+                              import { generateSignedUrl } from "../../utils/aws";
+                              import BuyProductsSellers from "./BuyProductsSeller";
+                              import GiveAway from "./GiveAway";
+                              // import { SOCKET_URL } from "../api/apiDetails"; // Not used, can be removed
+                              import { BiNotepad } from "react-icons/bi";
+                              import { FiShare } from "react-icons/fi";
+                              import { AiOutlineShop } from "react-icons/ai";
+                              import { useAuth } from "../../context/AuthContext";
+                              import { toast } from "react-toastify";
+                              import { AnimatePresence, motion } from "framer-motion";
+                              import StartStream from "../reuse/LiveStream/StartStream";
+                              import { useContext } from "react"; // Added useContext
+                              
+                              const socket = io.connect(socketurl, {
+                                  transports: ['websocket'], // Force WebSocket transport
+                              });
+                              
+                              const ShowDetailsSeller = () => {
+                                  const { user } = useAuth();
+                                  const navigate = useNavigate();
+                                  const { showId } = useParams();
+                                  const [show, setShow] = useState();
+                                  const [liked, setLiked] = useState(false);
+                                  const [likes, setLikes] = useState(0);
+                                  const [userId] = useState(user?._id); // Changed to a constant as it's from context
+                              
+                              
+                                  const [signedUrls, setSignedUrls] = useState({});
+                                  const [products, setProducts] = useState([]);
+                                  const [activeTab, setActiveTab] = useState("Auction");
+                                  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+                                  const [viewerCount, setViewerCount] = useState(0); // Keeping viewerCount, but it will be updated via socket
+                              
+                                  // State for navigation confirmation dialog
+                                  const [showExitConfirm, setShowExitConfirm] = useState(false);
+                                  const pendingNavigation = useRef(null); // Ref to store the blocked navigation
+                              
+                                  // Access the navigation context to block transitions
+                                  const navigator = useContext(UNSAFE_NavigationContext).navigator;
+                              
+                                  // Fetch show data on component mount and when showMobileSidebar changes
+                                  useEffect(() => {
+                                      fetchShow();
+                                  }, [showMobileSidebar, showId]); // Added showId to dependency array
+                              
+                                  // Update likes and liked status when show data changes
+                                  useEffect(() => {
+                                      if (show) {
+                                          setLikes(show?.likes);
+                                          setLiked(show?.likedBy?.includes(user?._id));
+                                          setViewerCount(show?.viewerCount || 0);
+                                      }
+                                  }, [show, user?._id]);
+                              
+                                  const fetchShow = async () => {
+                                      // setLoading(true); // Moved loading state into fetchShowData
+                                      try {
+                                          const response = await axios.get(`${socketurl}/api/shows/get/${showId}`, {
+                                              withCredentials: true,
+                                          });
+                                          if (response.status === 200) {
+                                              const showData = response.data;
+                                              console.log("Fetched Show Data:", showData);
+                                              setShow(showData);
+                                              const allProducts = [
+                                                  ...(showData?.buyNowProducts || []),
+                                                  ...(showData?.auctionProducts || []),
+                                                  ...(showData?.giveawayProducts || []),
+                                              ];
+                                              setProducts(allProducts);
+                                          } else {
+                                              console.error("Failed to fetch show details.");
+                                          }
+                                      } catch (error) {
+                                          console.error("Error fetching show details:", error);
+                                      } finally {
+                                          // setLoading(false); // Moved loading state into fetchShowData
+                                      }
+                                  };
+                              
+                                  const handleLike = () => {
+                                      if (!userId) {
+                                          toast.error("Please log in to like a show.");
+                                          return;
+                                      }
+                                      socket.emit("toggleLike", { streamId: showId, userId });
+                                  };
+                              
+                                  useEffect(() => {
+                                      if (socket && showId) {
+                                          socket.emit("joinRoom", showId);
+                              
+                                          const handleLikesUpdate = ({ likes, likedBy }) => {
+                                              setLikes(likes);
+                                              setLiked(likedBy?.includes(userId));
+                                          };
+                              
+                                          const handleViewerCountUpdate = (count) => {
+                                              setViewerCount(count);
+                                          };
+                              
+                                          socket.on(`likesUpdated-${showId}`, handleLikesUpdate);
+                                          socket.on(`viewerCountUpdate-${showId}`, handleViewerCountUpdate); // Listen for viewer count updates
+                              
+                                          return () => {
+                                              if (socket) {
+                                                  socket.off(`likesUpdated-${showId}`, handleLikesUpdate);
+                                                  socket.off(`viewerCountUpdate-${showId}`, handleViewerCountUpdate); // Clean up
+                                                  socket.emit("leaveRoom", showId); // Emit leave room on unmount
+                                              }
+                                          };
+                                      }
+                                  }, [socket, showId, userId]);
+                              
+                                  // Handle stream timer (This part is still relevant for displaying the time, even if StartStream handles the actual logic)
+                                  const [streamTime, setStreamTime] = useState(0); // Kept streamTime state
+                                  const timerRef = useRef(null); // Kept timerRef
+                              
+                                  useEffect(() => {
+                                      // Assuming StartStream component will emit an event when streaming starts/stops
+                                      // For now, let's just keep the timer running if the 'show' object indicates it's live
+                                      // You might need a more robust way to sync this with StartStream's actual streaming state.
+                                      if (show?.isLive) { // Assuming `isLive` property on the show object
+                                          timerRef.current = setInterval(() => {
+                                              setStreamTime((prev) => prev + 1);
+                                          }, 1000);
+                                      } else {
+                                          if (timerRef.current) {
+                                              clearInterval(timerRef.current);
+                                          }
+                                          setStreamTime(0);
+                                      }
+                              
+                                      return () => {
+                                          if (timerRef.current) {
+                                              clearInterval(timerRef.current);
+                                          }
+                                      };
+                                  }, [show?.isLive]);
+                              
+                              
+                                  const formatTime = (seconds) => {
+                                      const hrs = Math.floor(seconds / 3600);
+                                      const mins = Math.floor((seconds % 3600) / 60);
+                                      const secs = seconds % 60;
+                                      return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+                                  };
+                              
+                                  // Removed toggleCamera and toggleMic - StartStream handles this
+                              
+                                  // Removed fetchPublishingToken, startStreaming, stopStreaming - StartStream handles this
+                              
+                                  // Navigation confirmation logic
+                                  useEffect(() => {
+                                      if (show?.isLive) { // Only prompt if currently live
+                                          const handleBlockedNavigation = (event) => {
+                                              // If the user tries to navigate, prevent it and show the modal
+                                              if (!showExitConfirm) { // Prevent showing multiple modals
+                                                  event.preventDefault();
+                                                  pendingNavigation.current = event.destination;
+                                                  setShowExitConfirm(true);
+                                              }
+                                          };
+                              
+                                          // This relies on React Router's internal navigation blocking
+                                          // This is an UNSAFE API and might change in future versions of React Router
+                                          // A more robust solution for production would involve a custom navigation prompt hook.
+                                          const unblock = navigator.block(handleBlockedNavigation);
+                              
+                                          return () => {
+                                              unblock();
+                                          };
+                                      }
+                                  }, [navigator, showExitConfirm, show?.isLive]);
+                              
+                                  const confirmExit = () => {
+                                      setShowExitConfirm(false);
+                                      if (pendingNavigation.current) {
+                                          // Allow the navigation to proceed
+                                          pendingNavigation.current.retry();
+                                          pendingNavigation.current = null;
+                                      }
+                                  };
+                              
+                                  const cancelExit = () => {
+                                      setShowExitConfirm(false);
+                                      pendingNavigation.current = null; // Clear pending navigation
+                                  };
+                              
+                              
+                                  // Share handler for the show page
+                                  const handleShare = async () => {
+                                      const shareUrl = `${window.location.origin}/home/show/${showId}`;
+                                      if (navigator.share) {
+                                          try {
+                                              await navigator.share({
+                                                  title: show?.title || "Check out this show!",
+                                                  text: "Hey, check out this live show on our platform!",
+                                                  url: shareUrl,
+                                              });
+                                              console.log("Shared successfully");
+                                          } catch (error) {
+                                              console.error("Error sharing", error);
+                                          }
+                                      } else {
+                                          navigator.clipboard
+                                              .writeText(shareUrl)
+                                              .then(() => {
+                                                  toast.success("Link copied to clipboard!");
+                                              })
+                                              .catch((err) => console.error("Error copying link:", err));
+                                      }
+                                  };
+                              
+                              
+                              useEffect(() => {
+                                  const fetchSignedUrls = async () => {
+                                      const urls = {}; 
+                                      const cdnURL = import.meta.env.VITE_AWS_CDN_URL; 
+                              
+                                      for (const product of products) {
+                                          if (product.productId.images && product.productId.images[0] && product.productId.images[0].key) {
+                                              urls[product.productId._id] = cdnURL + product.productId.images[0].key;
+                                          }
+                                      }
+                                      setSignedUrls(urls);
+                                  };
+                              
+                                  if (products.length > 0) {
+                                      fetchSignedUrls();
+                                  }
+                              }, [products]);
+                              
+                                  return (
+                                      <div className="flex min-h-screen bg-stone-950 text-white font-montserrat">
+                                          {/* Left Sidebar - Auction Details */}
+                                          <div className="w-[25%] hidden lg:block border-r border-stone-800 bg-stone-950 text-white shadow-xl">
+                                              <div className="p-6 space-y-6">
+                                                  {/* Back Button */}
+                                                  <button
+                                                      onClick={() => navigate(`/seller/allshows`)}
+                                                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 transition-all duration-300 text-sm font-medium"
+                                                  >
+                                                      <ArrowLeft className="w-4 h-4" /> Back
+                                                  </button>
+                              
+                                                  {/* Seller Info */}
+                                                  {/* <div className="flex items-center space-x-3 p-4 bg-stone-900 rounded-2xl shadow-lg border border-stone-800">
+                                                      <div className="avatar">
+                                                          {show?.host?.userInfo?.profileURL ? (
+                                                              <div className="w-12 h-12 rounded-full ring-2 ring-yellow-500/20 overflow-hidden">
+                                                                  <img
+                                                                      src={show?.host?.userInfo?.profileURL || "/placeholder.svg"}
+                                                                      alt={show?.host?.userInfo?.userName || show?.host?.userInfo?.name}
+                                                                      className="w-full h-full object-cover"
+                                                                      onError={(e) => {
+                                                                          e.target.parentElement.innerHTML = `<div class="w-12 h-12 bg-stone-800 text-yellow-500 rounded-full flex items-center justify-center">
+                                                                              <span class="text-lg font-bold capitalize">${show?.host?.userInfo?.userName.charAt(0)}</span>
+                                                                          </div>`;
+                                                                      }}
+                                                                  />
+                                                              </div>
+                                                          ) : (
+                                                              <div className="bg-stone-800 text-yellow-500 rounded-full w-12 h-12 flex items-center justify-center ring-2 ring-yellow-500/20">
+                                                                  <span className="text-lg font-bold capitalize">{show?.host?.userInfo?.userName?.charAt(0)}</span>
+                                                              </div>
+                                                          )}
+                                                      </div>
+                                                      <div>
+                                                          <h2 className="font-semibold text-lg">{show?.host?.companyName || show?.host?.businessName}</h2>
+                                                          <div className="flex items-center space-x-2 text-sm text-stone-400">
+                                                              <span className="flex items-center gap-1">
+                                                                  <span className="text-yellow-500">★</span> <span>5.0</span>
+                                                              </span>
+                                                              <span>•</span>
+                                                              <button className="px-3 py-1 bg-yellow-400 text-stone-900 rounded-full text-xs font-bold hover:bg-yellow-500 transition-colors">
+                                                                  Follow
+                                                              </button>
+                                                          </div>
+                                                      </div>
+                                                  </div> */}
+                                              </div>
+                              
+                                              <div className="">
+                                                  {/* Navigation Tabs */}
+                                                  <div className="flex bg-stone-900 p-1.5 rounded-xl shadow-md border border-stone-800">
+                                                      <button
+                                                          className={`flex-1 py-1 px-2 rounded-lg text-sm font-medium transition-all ${activeTab === "Auction" ? "bg-yellow-400 text-stone-900 font-semibold" : "text-stone-300 hover:bg-stone-800"}`}
+                                                          onClick={() => setActiveTab("Auction")}
+                                                      >
+                                                          Auction
+                                                      </button>
+                                                      <button
+                                                          className={`flex-1 py-1 px-2 rounded-lg text-sm font-medium transition-all ${activeTab === "Buy Now" ? "bg-yellow-400 text-stone-900 font-semibold" : "text-stone-300 hover:bg-stone-800"}`}
+                                                          onClick={() => setActiveTab("Buy Now")}
+                                                      >
+                                                          Buy Now
+                                                      </button>
+                                                      <button
+                                                          className={`flex-1 py-1 px-2 rounded-lg text-sm font-medium transition-all ${activeTab === "Give away" ? "bg-yellow-400 text-stone-900 font-semibold" : "text-stone-300 hover:bg-stone-800"}`}
+                                                          onClick={() => setActiveTab("Give away")}
+                                                      >
+                                                          Giveaway
+                                                      </button>
+                                                  </div>
+                              
+                                                  {/* Tab Content */}
+                                                  <div
+                                                      className="space-y-4 overflow-y-auto pr-2"
+                                                      style={{ maxHeight: "calc(100vh - 320px)", scrollbarWidth: "thin" }}
+                                                  >
+                                                      {activeTab === "Auction" && (
+                                                          <div className="space-y-4">
+                                                              {show?.auctionProducts?.length ? (
+                                                                  show?.auctionProducts?.map((taggedProduct) => (
+                                                                      <div
+                                                                          key={taggedProduct._id}
+                                                                          className="overflow-hidden"
+                                                                      >
+                                                                          <Auctions showId={showId} streamId={showId} product={taggedProduct} signedUrls={signedUrls} />
+                                                                      </div>
+                                                                  ))
+                                                              ) : (
+                                                                  <div className="text-center py-8 text-stone-400">
+                                                                      <Gavel className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                                                      <p>No auction products available</p>
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                      )}
+                                                      {activeTab === "Buy Now" && (
+                                                          <div className="space-y-4">
+                                                              {show?.buyNowProducts?.length ? (
+                                                                  show?.buyNowProducts?.map((taggedProduct) => (
+                                                                      <div
+                                                                          key={taggedProduct._id}
+                                                                          className="overflow-hidden"
+                                                                      >
+                                                                          <BuyProductsSellers
+                                                                              showId={showId}
+                                                                              streamId={showId}
+                                                                              product={taggedProduct}
+                                                                              signedUrls={signedUrls}
+                                                                          />
+                                                                      </div>
+                                                                  ))
+                                                              ) : (
+                                                                  <div className="text-center py-8 text-stone-400">
+                                                                      <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                                                      <p>No buy now products available</p>
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                      )}
+                                                      {activeTab === "Give away" && (
+                                                          <div className="space-y-4">
+                                                              {show?.giveawayProducts?.length ? (
+                                                                  show?.giveawayProducts?.map((taggedProduct) => (
+                                                                      <div
+                                                                          key={taggedProduct._id}
+                                                                          className="overflow-hidden"
+                                                                      >
+                                                                          <GiveAway streamId={showId} product={taggedProduct} signedUrls={signedUrls} />
+                                                                      </div>
+                                                                  ))
+                                                              ) : (
+                                                                  <div className="text-center py-8 text-stone-400">
+                                                                      <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                                                      <p>No giveaway products available</p>
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                      )}
+                                                  </div>
+                                              </div>
+                                          </div>
+                              
+                                          {/* Mobile Sidebar for Auction Details */}
+                                          <AnimatePresence>
+                                              {showMobileSidebar && (
+                                                  <motion.div
+                                                      className="fixed inset-0 z-50 flex lg:hidden"
+                                                      initial={{ opacity: 0 }}
+                                                      animate={{ opacity: 1 }}
+                                                      exit={{ opacity: 0 }}
+                                                      transition={{ duration: 0.3 }}
+                                                  >
+                                                      {/* Overlay */}
+                                                      <motion.div
+                                                          className="fixed inset-0 bg-black"
+                                                          onClick={() => setShowMobileSidebar(false)}
+                                                          initial={{ opacity: 0 }}
+                                                          animate={{ opacity: 0.7 }}
+                                                          exit={{ opacity: 0 }}
+                                                          transition={{ duration: 0.3 }}
+                                                      ></motion.div>
+                              
+                                                      {/* Sidebar */}
+                                                      <motion.div
+                                                          className="relative w-full max-w-sm bg-stone-950 p-6 space-y-6 border-r border-stone-800 shadow-xl overflow-y-auto"
+                                                          initial={{ x: "-100%" }}
+                                                          animate={{ x: 0 }}
+                                                          exit={{ x: "-100%" }}
+                                                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                      >
+                                                          <div className="flex justify-between items-center">
+                                                              <button
+                                                                  onClick={() => navigate(`/seller/allshows`)}
+                                                                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 transition-all duration-300 text-sm font-medium"
+                                                              >
+                                                                  <ArrowLeft className="w-4 h-4" /> Back
+                                                              </button>
+                                                              <button
+                                                                  onClick={() => setShowMobileSidebar(false)}
+                                                                  className="p-2 rounded-full bg-stone-800 text-stone-400 hover:bg-stone-700"
+                                                              >
+                                                                  <X size={20} />
+                                                              </button>
+                                                          </div>
+                              
+                                                          {/* Seller Info */}
+                                                          <div className="flex items-center space-x-3 p-4 bg-stone-900 rounded-2xl shadow-lg border border-stone-800">
+                                                              <div className="avatar">
+                                                                  {show?.host?.userInfo?.profileURL ? (
+                                                                      <div className="w-12 h-12 rounded-full ring-2 ring-yellow-500/20 overflow-hidden">
+                                                                          <img
+                                                                              src={show?.host?.userInfo?.profileURL || "/placeholder.svg"}
+                                                                              alt={show?.host?.userInfo?.userName || show?.host?.userInfo?.name}
+                                                                              className="w-full h-full object-cover"
+                                                                              onError={(e) => {
+                                                                                  e.target.parentElement.innerHTML = `<div class="w-12 h-12 bg-stone-800 text-yellow-500 rounded-full flex items-center justify-center">
+                                                                                      <span class="text-lg font-bold capitalize">${show?.host?.userInfo?.userName.charAt(0)}</span>
+                                                                                  </div>`;
+                                                                              }}
+                                                                          />
+                                                                      </div>
+                                                                  ) : (
+                                                                      <div className="bg-stone-800 text-yellow-500 rounded-full w-12 h-12 flex items-center justify-center ring-2 ring-yellow-500/20">
+                                                                          <span className="text-lg font-bold capitalize">
+                                                                              {show?.host?.userInfo?.userName?.charAt(0)}
+                                                                          </span>
+                                                                      </div>
+                                                                  )}
+                                                              </div>
+                                                              <div>
+                                                                  <h2 className="font-semibold text-lg">{show?.host?.companyName || show?.host?.businessName}</h2>
+                                                                  <div className="flex items-center space-x-2 text-sm text-stone-400">
+                                                                      <span className="flex items-center gap-1">
+                                                                          <span className="text-yellow-500">★</span> <span>5.0</span>
+                                                                      </span>
+                                                                      <span>•</span>
+                                                                      <button className="px-3 py-1 bg-yellow-400 text-stone-900 rounded-full text-xs font-bold hover:bg-yellow-500 transition-colors">
+                                                                          Follow
+                                                                      </button>
+                                                                  </div>
+                                                              </div>
+                                                          </div>
+                              
+                                                          {/* Navigation Tabs */}
+                                                          <div className="flex bg-stone-900 p-1.5 rounded-xl shadow-md border border-stone-800">
+                                                              <button
+                                                                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === "Auction" ? "bg-yellow-400 text-stone-900 font-semibold" : "text-stone-300 hover:bg-stone-800"}`}
+                                                                  onClick={() => setActiveTab("Auction")}
+                                                              >
+                                                                  Auction
+                                                              </button>
+                                                              <button
+                                                                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === "Buy Now" ? "bg-yellow-400 text-stone-900 font-semibold" : "text-stone-300 hover:bg-stone-800"}`}
+                                                                  onClick={() => setActiveTab("Buy Now")}
+                                                              >
+                                                                  Buy Now
+                                                              </button>
+                                                              <button
+                                                                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === "Give away" ? "bg-yellow-400 text-stone-900 font-semibold" : "text-stone-300 hover:bg-stone-800"}`}
+                                                                  onClick={() => setActiveTab("Give away")}
+                                                              >
+                                                                  Giveaway
+                                                              </button>
+                                                          </div>
+                              
+                                                          {/* Tab Content */}
+                                                          <div
+                                                              className="space-y-4 overflow-y-auto pr-2"
+                                                              style={{ maxHeight: "calc(100vh - 320px)", scrollbarWidth: "thin" }}
+                                                          >
+                                                              {activeTab === "Auction" && (
+                                                                  <div className="space-y-4">
+                                                                      {show?.auctionProducts?.length ? (
+                                                                          show?.auctionProducts?.map((taggedProduct) => (
+                                                                              <div
+                                                                                  key={taggedProduct._id}
+                                                                                  className="overflow-hidden"
+                                                                              >
+                                                                                  <Auctions showId={showId} streamId={showId} product={taggedProduct} signedUrls={signedUrls} />
+                                                                              </div>
+                                                                          ))
+                                                                      ) : (
+                                                                          <div className="text-center py-8 text-stone-400">
+                                                                              <Gavel className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                                                              <p>No auction products available</p>
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              )}
+                                                              {activeTab === "Buy Now" && (
+                                                                  <div className="space-y-4">
+                                                                      {show?.buyNowProducts?.length ? (
+                                                                          show?.buyNowProducts?.map((taggedProduct) => (
+                                                                              <div
+                                                                                  key={taggedProduct._id}
+                                                                                  className="overflow-hidden"
+                                                                              >
+                                                                                  <BuyProductsSellers
+                                                                                      showId={showId}
+                                                                                      streamId={showId}
+                                                                                      product={taggedProduct}
+                                                                                      signedUrls={signedUrls}
+                                                                                  />
+                                                                              </div>
+                                                                          ))
+                                                                      ) : (
+                                                                          <div className="text-center py-8 text-stone-400">
+                                                                              <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                                                              <p>No buy now products available</p>
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              )}
+                                                              {activeTab === "Give away" && (
+                                                                  <div className="space-y-4">
+                                                                      {show?.giveawayProducts?.length ? (
+                                                                          show?.giveawayProducts?.map((taggedProduct) => (
+                                                                              <div
+                                                                                  key={taggedProduct._id}
+                                                                                  className="overflow-hidden"
+                                                                              >
+                                                                                  <GiveAway streamId={showId} product={taggedProduct} signedUrls={signedUrls} />
+                                                                              </div>
+                                                                          ))
+                                                                      ) : (
+                                                                          <div className="text-center py-8 text-stone-400">
+                                                                              <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                                                              <p>No giveaway products available</p>
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                      </motion.div>
+                                                  </motion.div>
+                                              )}
+                                          </AnimatePresence>
+                              
+                                          {/* Center - Live Stream */}
+                                          <div className="flex-1 flex flex-col min-h-screen items-center relative">
+                                              <div className="w-full max-w-[500px] h-screen aspect-[9/22] bg-stone-900 relative shadow-xl rounded-xl overflow-hidden">
+                                                  <div className="relative bg-black w-full h-full">
+                                                      {/* StartStream component handles the actual video and streaming logic */}
+                                                      <StartStream showId={showId} showDetails={show} />
+                              
+                                                    
+                                                  </div>
+                              
+                                                  <div className="absolute top-12 left-4 right-16 p-4">
+                                                      <h1 className="text-xl font-bold text-white">{show?.title || "Untitled Stream"}</h1>
+                                                      {/* <div className="flex items-center space-x-2 text-sm text-stone-300 mt-1">
+                                                          <span className="flex items-center gap-1">
+                                                              <Users className="w-4 h-4 text-yellow-500" /> {viewerCount || 0} watching
+                                                          </span>
+                                                          <span>•</span>
+                                                          <span>{show?.category || "General"}</span>
+                                                      </div> */}
+                                                  </div>
+                              
+                                                  {/* Floating Action Buttons */}
+                                                  <div className="absolute right-4 bottom-28 flex flex-col space-y-3">
+                                                      <LikeButton
+                                                          initialLikes={likes}
+                                                          onLike={handleLike}
+                                                          isLiked={liked}
+                                                          setIsLiked={setLiked}
+                                                          setLikes={setLikes}
+                                                          connectionReady={!!socket}
+                                                      />
+                              
+                                                      <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700 transition-colors shadow-lg">
+                                                          <BiNotepad className="h-5 w-5" />
+                                                      </button>
+                              
+                                                      <button
+                                                          onClick={handleShare}
+                                                          className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700 transition-colors shadow-lg"
+                                                      >
+                                                          <FiShare className="h-5 w-5" />
+                                                      </button>
+                              
+                                                      <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700 transition-colors shadow-lg">
+                                                          <Volume2 className="h-5 w-5" />
+                                                      </button>
+                              
+                                                      <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700 transition-colors shadow-lg">
+                                                          <LucideWallet className="h-5 w-5" />
+                                                      </button>
+                              
+                                                      {/* Mobile Toggle Button for Auction Details */}
+                                                      <button
+                                                          onClick={() => setShowMobileSidebar(true)}
+                                                          className="relative lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 text-stone-900 hover:bg-yellow-500 transition-colors shadow-lg"
+                                                      >
+                                                          <AiOutlineShop className="w-5 h-5" />
+                                                          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white border-2 border-stone-900">
+                                                              {(show?.auctionProducts?.length || 0) +
+                                                                  (show?.buyNowProducts?.length || 0) +
+                                                                  (show?.giveawayProducts?.length || 0)}
+                                                          </span>
+                                                      </button>
+                                                  </div>
+                              
+                                                  {/* Overlay Chat/Comments */}
+                                                  <div className="absolute bottom-5 left-1 right-16 text-white flex flex-col">
+                                                      <LiveComments streamId={showId} prevComments={show?.comments} />
+                                                  </div>
+                                              </div>
+                                          </div>
+                              
+                                          {/* Right Sidebar - Chat and Stream Controls (Simplified) */}
+                                          <div className="w-[25%] hidden lg:flex flex-col justify-between border-l border-stone-800 min-h-screen bg-stone-950">
+                                              {/* Stream Controls - Now handled by StartStream, but you might want to show some info here */}
+                                              <div className="p-6 border-b border-stone-800 text-center flex flex-col gap-4">
+                                                  <h3 className="text-xl font-bold text-white">Stream Status</h3>
+                                                  <div className="flex justify-between items-center mt-2 p-3 bg-stone-900 rounded-lg border border-stone-800">
+                                                      <div className="flex items-center gap-2">
+                                                          <Clock className="w-4 h-4 text-yellow-500" />
+                                                          <span className="font-mono">{formatTime(streamTime)}</span>
+                                                      </div>
+                                                      <div className="flex items-center gap-2">
+                                                          <Users className="w-4 h-4 text-yellow-500" />
+                                                          <span>{viewerCount || 0}</span>
+                                                      </div>
+                                                  </div>
+                                                  {/* You might want to add a button here to explicitly stop the stream if it's Live
+                                                      This would need to interact with the StartStream component's internal state or expose a stop function.
+                                                      For now, the navigation prompt covers exiting.
+                                                  */}
+                                              </div>
+                              
+                                              <div className="flex-1 flex flex-col text-white">
+                                                  <div className="p-4 border-b border-stone-800 flex items-center justify-between">
+                                                      <h3 className="font-semibold text-lg">Live Chat</h3>
+                                                      <MessageCircle className="h-5 w-5 text-yellow-500" />
+                                                  </div>
+                                                  <LiveComments
+                                                      streamId={showId}
+                                                      prevComments={show?.comments}
+                                                      height={show?.comments?.length > 10 ? "70vh" : "32vh"}
+                                                  />
+                                              </div>
+                                          </div>
+                              
+                                          {/* Exit Confirmation Modal */}
+                                          <AnimatePresence>
+                                              {showExitConfirm && (
+                                                  <motion.div
+                                                      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                                                      initial={{ opacity: 0 }}
+                                                      animate={{ opacity: 1 }}
+                                                      exit={{ opacity: 0 }}
+                                                      transition={{ duration: 0.3 }}
+                                                  >
+                                                      <motion.div
+                                                          className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+                                                          onClick={cancelExit}
+                                                      ></motion.div>
+                                                      <motion.div
+                                                          className="relative bg-stone-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-stone-700"
+                                                          initial={{ scale: 0.8, opacity: 0 }}
+                                                          animate={{ scale: 1, opacity: 1 }}
+                                                          exit={{ scale: 0.8, opacity: 0 }}
+                                                          transition={{ duration: 0.2 }}
+                                                      >
+                                                          <h2 className="text-2xl font-bold text-white mb-4">Exit Live Stream?</h2>
+                                                          <p className="text-stone-300 mb-6">
+                                                              Are you sure you want to exit the live stream? Your stream will end.
+                                                          </p>
+                                                          <div className="flex justify-center gap-4">
+                                                              <button
+                                                                  onClick={confirmExit}
+                                                                  className="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md"
+                                                              >
+                                                                  Yes, End Stream
+                                                              </button>
+                                                              <button
+                                                                  onClick={cancelExit}
+                                                                  className="px-6 py-3 bg-stone-700 text-white rounded-lg font-semibold hover:bg-stone-600 transition-colors shadow-md"
+                                                              >
+                                                                  No, Stay Live
+                                                              </button>
+                                                          </div>
+                                                      </motion.div>
+                                                  </motion.div>
+                                              )}
+                                          </AnimatePresence>
+                                      </div>
+                                  );
+                              };
+                              
+                              export default ShowDetailsSeller;

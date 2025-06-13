@@ -1,587 +1,450 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
-import { predefinedTags, indianLanguages } from "../../../utils/constants";
-import { GET_CATEGORIES, UPDATE_SHOW, BASIC_SHOW_INFO } from "../../api/apiDetails"; 
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { indianLanguages } from "../../../utils/constants";
+import { GET_CATEGORIES, UPDATE_SHOW, BASIC_SHOW_INFO } from "../../api/apiDetails";
 import axiosInstance from "../../../utils/axiosInstance";
-import { X, Loader2, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
+import {
+  X,
+  Loader2,
+  Camera,
+  FileVideo,
+  ArrowLeft,
+  Save,
+  RotateCcw,
+  Type,
+  Calendar,
+  Clock,
+  Globe,
+} from "lucide-react";
 import { getLocalStringsFromUtcIso, getUtcIsoStringFromLocal } from "../../../utils/dateUtils";
-import { uploadImageToS3, uploadVideoToS3, deleteObjectFromS3 } from "../../../utils/aws";
+import {
+    uploadImageToS3,
+    uploadVideoToS3,
+    deleteObjectFromS3,
+    generateSignedVideoUrl
+} from "../../../utils/aws";
+import CohostSelector from "./CohostSelector";
 
-const EditLiveStreamModal = ({ isOpen, onClose, streamId }) => {
-  const CDN_BASE_URL = import.meta.env.VITE_AWS_CDN_URL;
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const EditLiveStreamPage = () => {
+  const { streamId } = useParams();
+  const navigate = useNavigate();
+  const cdnURL = import.meta.env.VITE_AWS_CDN_URL;
+
+  const [initialData, setInitialData] = useState(null);
+  const [formData, setFormData] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [selectedTags, setSelectedTags] = useState([]);
 
-  const [imageUploadProgress, setImageUploadProgress] = useState(0);
-  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
-
-  const [loadingStates, setLoadingStates] = useState({
+  const [loading, setLoading] = useState({
+    page: true,
+    submit: false,
     imageUpload: false,
     videoUpload: false,
   });
 
+  const [signedVideoUrl, setSignedVideoUrl] = useState('');
+
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [videoPreview, setVideoPreview] = useState(null);
+
   const imageInputRef = useRef(null);
   const videoInputRef = useRef(null);
 
-  const initialFormState = {
-    title: "",
-    date: "",
-    time: "",
-    category: "",
-    subCategory: "",
-    tags: [],
-    thumbnailImage: "",
-    previewVideo: "",
-    language: "",
-  };
-
-  const [formData, setFormData] = useState(initialFormState);
-
+  // Effect to generate signed URL for the initial video
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [showRes, categoriesRes] = await Promise.all([
-          axiosInstance.get(`${BASIC_SHOW_INFO}/${streamId}`),
-          axiosInstance.get(GET_CATEGORIES),
-        ]);
-
-        const showData = showRes.data.data;
-        const categoriesData = categoriesRes.data;
-        const localDateTime = getLocalStringsFromUtcIso(showData.scheduledAt);
-
-        setFormData({
-          title: showData.title || "",
-          date: localDateTime.date,
-          time: localDateTime.time,
-          category: showData.category || "",
-          subCategory: showData.subCategory || "",
-          tags: showData.tags || [],
-          thumbnailImage: showData.thumbnailImage || "",
-          previewVideo: showData.previewVideo || "",
-          language: showData.language || "",
-        });
-        setSelectedTags(showData.tags || []);
-        setCategories(categoriesData || []);
-      } catch (error) {
-        console.error("Fetch error:", error);
-        toast.error("Failed to load stream details.");
-        onClose();
-      } finally {
-        setIsLoading(false);
-      }
+    const getSignedUrlForVideo = async () => {
+        if (formData?.previewVideo && !formData.previewVideo.startsWith('blob:')) {
+            const url = await generateSignedVideoUrl(formData.previewVideo);
+            if(url) {
+                setSignedVideoUrl(url);
+            } else {
+                toast.error("Could not load preview video.");
+            }
+        }
     };
+    getSignedUrlForVideo();
+  }, [formData?.previewVideo]);
 
-    if (isOpen && streamId) {
-      fetchData();
-    } else if (!isOpen) {
-      setIsLoading(true);
-      setFormData(initialFormState);
-      setSelectedTags([]);
-      setErrors({});
-      if (imageInputRef.current) imageInputRef.current.value = "";
-      if (videoInputRef.current) videoInputRef.current.value = "";
-      setImageUploadProgress(0);
-      setVideoUploadProgress(0);
-    }
-  }, [isOpen, streamId, onClose]);
 
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error("Invalid image type. Please upload JPG, PNG, or WEBP.");
-      return;
-    }
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast.error(`Image too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 5MB.`);
-      return;
-    }
-
-    setErrors(prev => ({ ...prev, thumbnailImage: undefined }));
-    setImageUploadProgress(0);
-    setLoadingStates(prev => ({ ...prev, imageUpload: true }));
-
-    const oldImageKey = formData.thumbnailImage;
-
+  const fetchAndSetData = useCallback(async () => {
+    setLoading(prev => ({ ...prev, page: true }));
     try {
-      const s3ObjectKey = await uploadImageToS3(
-        file,
-        "show-thumbnails",
-        setImageUploadProgress
-      );
+      const [showRes, categoriesRes] = await Promise.all([
+        axiosInstance.get(`${BASIC_SHOW_INFO}/${streamId}`),
+        axiosInstance.get(GET_CATEGORIES),
+      ]);
 
-      if (!s3ObjectKey) throw new Error("S3 upload failed");
+      const showData = showRes.data.data;
+      console.log("Fetched show data:", showData);
+      const localDateTime = getLocalStringsFromUtcIso(showData.scheduledAt);
 
-      setFormData(prev => ({
-        ...prev,
-        thumbnailImage: s3ObjectKey,
-      }));
-      toast.success("Thumbnail uploaded!");
-
-      if (oldImageKey && oldImageKey !== s3ObjectKey) {
-        try {
-          await deleteObjectFromS3(oldImageKey);
-        } catch (deleteError) {
-          console.error("Error deleting old thumbnail:", deleteError);
-        }
-      }
-    } catch (error) {
-      console.error("Image upload failed:", error);
-      toast.error("Image upload failed");
-      if (imageInputRef.current) imageInputRef.current.value = "";
-    } finally {
-      setLoadingStates(prev => ({ ...prev, imageUpload: false }));
-    }
-  };
-
-  const handleVideoChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const allowedTypes = ["video/mp4"];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error("Invalid video type. Please upload MP4.");
-      return;
-    }
-    const maxVideoSize = 50 * 1024 * 1024;
-    if (file.size > maxVideoSize) {
-      toast.error(`Video too large. Max ${maxVideoSize / 1024 / 1024}MB.`);
-      return;
-    }
-
-    setVideoUploadProgress(0);
-    setLoadingStates(prev => ({ ...prev, videoUpload: true }));
-
-    const oldVideoKey = formData.previewVideo;
-
-    try {
-      const s3ObjectKey = await uploadVideoToS3(
-        file,
-        "show-previews",
-        setVideoUploadProgress
-      );
-
-      if (!s3ObjectKey) throw new Error("S3 upload failed");
-
-      setFormData(prev => ({
-        ...prev,
-        previewVideo: s3ObjectKey,
-      }));
-      toast.success("Preview video uploaded!");
-
-      if (oldVideoKey && oldVideoKey !== s3ObjectKey) {
-        try {
-          await deleteObjectFromS3(oldVideoKey);
-        } catch (deleteError) {
-          console.error("Error deleting old video:", deleteError);
-        }
-      }
-    } catch (error) {
-      console.error("Video upload failed:", error);
-      toast.error("Video upload failed");
-      if (videoInputRef.current) videoInputRef.current.value = "";
-    } finally {
-      setLoadingStates(prev => ({ ...prev, videoUpload: false }));
-    }
-  };
-
-  const resetImageState = async () => {
-    const imageKeyToDelete = formData.thumbnailImage;
-    if (imageKeyToDelete) {
-      setLoadingStates(prev => ({ ...prev, imageUpload: true }));
-      try {
-        await deleteObjectFromS3(imageKeyToDelete);
-        toast.success("Thumbnail removed");
-      } catch (error) {
-        console.error("Delete error:", error);
-        toast.error("Failed to remove thumbnail");
-      } finally {
-        setLoadingStates(prev => ({ ...prev, imageUpload: false }));
-      }
-    }
-    setFormData(prev => ({
-      ...prev,
-      thumbnailImage: "",
-    }));
-    setImageUploadProgress(0);
-    if (imageInputRef.current) imageInputRef.current.value = "";
-  };
-
-  const resetVideoState = async () => {
-    const videoKeyToDelete = formData.previewVideo;
-    if (videoKeyToDelete) {
-      setLoadingStates(prev => ({ ...prev, videoUpload: true }));
-      try {
-        await deleteObjectFromS3(videoKeyToDelete);
-        toast.success("Preview video removed");
-      } catch (error) {
-        console.error("Delete error:", error);
-        toast.error("Failed to remove video");
-      } finally {
-        setLoadingStates(prev => ({ ...prev, videoUpload: false }));
-      }
-    }
-    setFormData(prev => ({
-      ...prev,
-      previewVideo: "",
-    }));
-    setVideoUploadProgress(0);
-    if (videoInputRef.current) videoInputRef.current.value = "";
-  };
-
-  // ... (keep other handlers like handleInputChange, handleTagToggle, validateForm the same)
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) {
-      toast.error("Please fix form errors");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const scheduledAtUTC = getUtcIsoStringFromLocal(formData.date, formData.time);
-      if (!scheduledAtUTC) throw new Error("Invalid date/time");
-
-      const payload = {
-        title: formData.title,
-        scheduledAt: scheduledAtUTC,
-        category: formData.category,
-        subCategory: formData.subCategory,
-        language: formData.language,
-        tags: selectedTags,
-        thumbnailImage: formData.thumbnailImage,
-        previewVideo: formData.previewVideo || null,
+      const formattedData = {
+        title: showData.title || "",
+        date: localDateTime.date,
+        time: localDateTime.time,
+        category: showData.category || "",
+        subCategory: showData.subCategory || "",
+        tags: showData.tags || [],
+        thumbnailImage: showData.thumbnailImage || null,
+        previewVideo: showData.previewVideo || null,
+        language: showData.language || "",
+        hasCoHost: showData.hasCoHost || false,
+        coHost: showData.coHost || null,
       };
 
-      const res = await axiosInstance.put(`${UPDATE_SHOW}/${streamId}`, payload);
-      if (res.data.status) {
-        toast.success("Show updated!");
-        onClose(true);
-      } else {
-        throw new Error(res.data.message || "Update failed");
-      }
+      setInitialData(formattedData);
+      setFormData(formattedData);
+      setCategories(categoriesRes.data || []);
+      setThumbnailPreview(formattedData.thumbnailImage);
+      setVideoPreview(formattedData.previewVideo); // This holds the key
+
     } catch (error) {
-      console.error("Update error:", error);
-      toast.error(error.message);
+      console.error("Fetch error:", error);
+      toast.error("Failed to load stream details.");
+      navigate('/seller/allshows');
     } finally {
-      setIsSubmitting(false);
+      setLoading(prev => ({ ...prev, page: false }));
     }
-  };
+  }, [streamId, navigate]);
+
+  useEffect(() => {
+    fetchAndSetData();
+  }, [fetchAndSetData]);
+
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+        if (thumbnailPreview && thumbnailPreview.startsWith('blob:')) {
+            URL.revokeObjectURL(thumbnailPreview);
+        }
+        if (videoPreview && videoPreview.startsWith('blob:')) {
+            URL.revokeObjectURL(videoPreview);
+        }
+    };
+  }, [thumbnailPreview, videoPreview]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
-      ...prev,
-      [name]: value,
+        ...prev,
+        [name]: value,
+        ...(name === "category" && { subCategory: "" }),
     }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
-    }
-    if (name === 'category') {
-      setFormData(prev => ({ ...prev, subCategory: '' }));
-    }
   };
+  
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  const handleTagToggle = (tag) => {
-    setSelectedTags((prevTags) =>
-      prevTags.includes(tag)
-        ? prevTags.filter((t) => t !== tag)
-        : [...prevTags, tag]
-    );
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.title?.trim()) newErrors.title = "Title is required";
-    if (!formData.date) newErrors.date = "Date is required";
-    if (!formData.time) newErrors.time = "Time is required";
-    if (!formData.category) newErrors.category = "Category is required";
-    if (!formData.subCategory) newErrors.subCategory = "Subcategory is required";
-    if (!formData.language) newErrors.language = "Language is required";
-    if (!formData.thumbnailImage) newErrors.thumbnailImage = "Thumbnail image is required"; // Validates S3 key presence
-
-    // You might want to add a date/time validation to ensure it's in the future
-    // For example:
-    const scheduledDateTime = new Date(`${formData.date}T${formData.time}`);
-    if (scheduledDateTime <= new Date()) {
-        newErrors.date = "Scheduled date and time must be in the future.";
-        newErrors.time = "Scheduled date and time must be in the future.";
+    if (!file.type.startsWith("image/")) {
+      toast.error("Invalid file type.");
+      return;
     }
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(`Image is too large (Max 5MB).`);
+      return;
+    }
+    
+    const localPreviewUrl = URL.createObjectURL(file);
+    if (thumbnailPreview && thumbnailPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(thumbnailPreview);
+    }
+    setThumbnailPreview(localPreviewUrl);
+    setLoading(prev => ({ ...prev, imageUpload: true }));
 
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
- 
-
-  if (!isOpen) return null;
-
-  const currentCategory = categories.find(c => c.categoryName === formData.category);
-  const subcategories = currentCategory?.subcategories || [];
-
-  return (
-    <>
-      <style jsx>{`
-        input[type="date"]::-webkit-calendar-picker-indicator,
-        input[type="time"]::-webkit-calendar-picker-indicator {
-          opacity: 1 !important;
-          cursor: pointer !important;
-          filter: brightness(0.2) !important;
+    try {
+        const newImageKey = await uploadImageToS3(file, "show-thumbnails");
+        
+        // After new image is uploaded, delete the old one if it was different from the initial one
+        if(formData.thumbnailImage && formData.thumbnailImage !== initialData.thumbnailImage) {
+            await deleteObjectFromS3(formData.thumbnailImage);
         }
-      `}</style>
 
-      <div className={`modal modal-open`}>
-        <div className="modal-box w-11/12 max-w-5xl bg-white shadow-xl relative">
-          <button
-            type="button"
-            onClick={() => onClose()}
-            className="btn btn-circle btn-sm absolute right-3 top-3 bg-red-500 hover:bg-red-600 border-none text-white z-20"
-            disabled={isSubmitting || loadingStates.imageUpload || loadingStates.videoUpload} // Disable if any upload in progress
-          >
-            <X size={18} />
-          </button>
+        setFormData(prev => ({ ...prev, thumbnailImage: newImageKey }));
+        setThumbnailPreview(newImageKey); // Update preview to use the key
+        URL.revokeObjectURL(localPreviewUrl);
+        toast.success("New thumbnail uploaded!");
+    } catch (error) {
+        console.error("Image upload failed:", error);
+        toast.error("Image upload failed.");
+        URL.revokeObjectURL(localPreviewUrl);
+        setThumbnailPreview(formData.thumbnailImage); // Revert to old image preview on failure
+    } finally {
+        setLoading(prev => ({ ...prev, imageUpload: false }));
+    }
+  };
 
-          {isLoading ? (
-            <div className="flex justify-center items-center h-96">
-              <Loader2 className="animate-spin text-indigo-500" size={48} />
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} noValidate>
-              <h3 className="text-xl font-bold mb-6 text-slate-800">
-                Edit Show Details
-              </h3>
+  const handleVideoChange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.type !== "video/mp4") {
+          toast.error("Please upload MP4 videos.");
+          return;
+      }
 
-              {/* Title Input */}
-              <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text text-slate-700 font-medium">Title *</span>
-                </label>
-                <input
-                  type="text" name="title" placeholder="Enter title"
-                  value={formData.title} onChange={handleInputChange}
-                  className={`input input-bordered w-full bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:bg-white ${errors.title ? "input-error border-red-400" : "border-slate-300 focus:border-indigo-500"}`}
-                  disabled={isSubmitting}
-                />
-                {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
-              </div>
+      const localPreviewUrl = URL.createObjectURL(file);
+      if (videoPreview && videoPreview.startsWith('blob:')) {
+          URL.revokeObjectURL(videoPreview);
+      }
+      setVideoPreview(localPreviewUrl);
+      setSignedVideoUrl(localPreviewUrl); // Show local preview immediately
+      setLoading(prev => ({ ...prev, videoUpload: true }));
 
-              {/* Date and Time */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="form-control">
-                  <label className="label"><span className="label-text text-slate-700 font-medium">Date *</span></label>
-                  <input
-                    type="date" name="date" value={formData.date} onChange={handleInputChange}
-                    className={`input input-bordered w-full bg-slate-50 text-slate-800 focus:bg-white ${errors.date ? "input-error border-red-400" : "border-slate-300 focus:border-indigo-500"}`}
-                    min={new Date().toISOString().split("T")[0]}
-                    disabled={isSubmitting}
-                  />
-                  {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
-                </div>
-                <div className="form-control">
-                  <label className="label"><span className="label-text text-slate-700 font-medium">Time *</span></label>
-                  <input
-                    type="time" name="time" value={formData.time} onChange={handleInputChange}
-                    className={`input input-bordered w-full bg-slate-50 text-slate-800 focus:bg-white ${errors.time ? "input-error border-red-400" : "border-slate-300 focus:border-indigo-500"}`}
-                    disabled={isSubmitting}
-                  />
-                  {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time}</p>}
-                </div>
-              </div>
+      try {
+          const newVideoKey = await uploadVideoToS3(file, "show-previews");
+          
+          // After new video is uploaded, delete the old one if it was different
+          if(formData.previewVideo && formData.previewVideo !== initialData.previewVideo) {
+              await deleteObjectFromS3(formData.previewVideo);
+          }
+          
+          setFormData(prev => ({ ...prev, previewVideo: newVideoKey }));
+          setVideoPreview(newVideoKey); // Update preview state to hold the key
 
-              {/* Category and Subcategory */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="form-control">
-                  <label className="label"><span className="label-text text-slate-700 font-medium">Category *</span></label>
-                  <select
-                    name="category" value={formData.category} onChange={handleInputChange}
-                    className={`select select-bordered w-full bg-slate-50 text-slate-800 focus:bg-white ${errors.category ? "select-error border-red-400" : "border-slate-300 focus:border-indigo-500"}`}
-                    disabled={isSubmitting}
-                  >
-                    <option disabled value="" className="text-slate-500">Select Category</option>
-                    {categories.map((cat) => (
-                      <option key={cat._id || cat.id || cat.categoryName} value={cat.categoryName} className="text-slate-800">{cat.categoryName}</option>
-                    ))}
-                  </select>
-                  {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
-                </div>
-                <div className="form-control">
-                  <label className="label"><span className="label-text text-slate-700 font-medium">Subcategory *</span></label>
-                  <select
-                    name="subCategory" value={formData.subCategory} onChange={handleInputChange}
-                    className={`select select-bordered w-full bg-slate-50 text-slate-800 focus:bg-white ${errors.subCategory ? "select-error border-red-400" : "border-slate-300 focus:border-indigo-500"}`}
-                    disabled={!formData.category || isSubmitting || subcategories.length === 0}
-                  >
-                    <option disabled value="" className="text-slate-500">Select Subcategory</option>
-                    {subcategories.map((sub) => (
-                      <option key={sub._id || sub.id || sub.name} value={sub.name} className="text-slate-800">{sub.name}</option>
-                    ))}
-                  </select>
-                  {errors.subCategory && <p className="text-red-500 text-xs mt-1">{errors.subCategory}</p>}
-                  {!formData.category && <p className="text-xs text-slate-400 mt-1">Select a category first</p>}
-                  {formData.category && subcategories.length === 0 && !isLoading && <p className="text-xs text-slate-400 mt-1">No subcategories available</p>}
-                </div>
-              </div>
+          const signedUrlForNewVideo = await generateSignedVideoUrl(newVideoKey);
+          setSignedVideoUrl(signedUrlForNewVideo || ''); // Set the signed URL for the new video
 
-              {/* Language */}
-              <div className="form-control mb-4">
-                <label className="label"><span className="label-text text-slate-700 font-medium">Language *</span></label>
-                <select
-                  name="language" value={formData.language} onChange={handleInputChange}
-                  className={`select select-bordered w-full bg-slate-50 text-slate-800 focus:bg-white ${errors.language ? "select-error border-red-400" : "border-slate-300 focus:border-indigo-500"}`}
-                  disabled={isSubmitting}
-                >
-                  <option disabled value="" className="text-slate-500">Select Language</option>
-                  {indianLanguages.map((lang) => (
-                    <option key={lang.value} value={lang.value} className="text-slate-800">{lang.label}</option>
-                  ))}
-                </select>
-                {errors.language && <p className="text-red-500 text-xs mt-1">{errors.language}</p>}
-              </div>
+          URL.revokeObjectURL(localPreviewUrl);
+          toast.success("New preview video uploaded!");
 
-              {/* Tags section */}
-              <div className="form-control mb-4">
-                <label className="label"><span className="label-text text-slate-700 font-medium">Tags (Optional)</span></label>
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-lg min-h-[50px] border border-slate-300">
-                    {selectedTags.length > 0 ? (
-                      selectedTags.map((tag, index) => (
-                        <div key={index} className="badge bg-indigo-100 text-indigo-800 border border-indigo-300 gap-1.5 px-2.5 py-3 text-sm font-medium">
-                          {tag}
-                          <button type="button" onClick={() => handleTagToggle(tag)} className="ml-1 text-indigo-500 hover:text-red-600 focus:outline-none" disabled={isSubmitting} aria-label={`Remove ${tag} tag`}>
-                            <X size={14} strokeWidth={2.5}/>
-                          </button>
-                        </div>
-                      ))
-                    ) : <span className="text-slate-400 text-sm italic px-1">No tags selected</span>}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <p className="text-sm font-medium text-slate-600">Add Tags:</p>
-                    <div className="flex flex-wrap gap-2 p-2 bg-slate-100 rounded-lg max-h-32 overflow-y-auto border border-slate-200">
-                      {predefinedTags.filter((tag) => !selectedTags.includes(tag)).map((tag) => (
-                        <button key={tag} type="button" onClick={() => handleTagToggle(tag)} className="btn btn-xs bg-white hover:bg-indigo-500 hover:text-white text-slate-700 border-slate-300 font-normal" disabled={isSubmitting}>
-                          + {tag}
-                        </button>
-                      ))}
-                      {predefinedTags.filter((tag) => !selectedTags.includes(tag)).length === 0 && <span className="text-slate-500 text-xs italic px-1">All available tags selected</span>}
-                    </div>
-                  </div>
-                </div>
-              </div>
+      } catch (error) {
+          console.error("Video upload failed:", error);
+          toast.error("Video upload failed.");
+          URL.revokeObjectURL(localPreviewUrl);
+          setVideoPreview(formData.previewVideo); // Revert to old video key
+          // Regenerate signed URL for the old video
+          const oldSignedUrl = await generateSignedVideoUrl(formData.previewVideo);
+          setSignedVideoUrl(oldSignedUrl || '');
+      } finally {
+          setLoading(prev => ({ ...prev, videoUpload: false }));
+      }
+  };
 
-              {/* --- Thumbnail Section (S3) --- */}
-              <div className="form-control mt-6 mb-4">
-                <label className="label"><span className="label-text text-slate-700 font-medium">Thumbnail Image *</span></label>
-                <div className={`border-2 border-dashed rounded-xl p-4 min-h-[220px] flex flex-col justify-center items-center relative group ${errors.thumbnailImage ? 'border-red-400' : 'border-indigo-300'} ${loadingStates.imageUpload ? 'bg-slate-50' : 'bg-white hover:bg-indigo-50/50 transition-colors'}`}>
-                  <input
-                    ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-                    onChange={handleImageChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    disabled={isSubmitting || loadingStates.imageUpload}
-                  />
-                  {formData.thumbnailImage ? (
-                    <div className="relative w-full h-full flex items-center justify-center">
-                       <img 
-                          src={`${CDN_BASE_URL}${formData.thumbnailImage}`}
-                          alt="Thumbnail preview" 
-                          className="max-h-[180px] max-w-full object-contain rounded-lg shadow-md" 
-                        />
+  const getDisplayableImageSrc = (previewState) => {
+      if (!previewState) return '';
+      if (previewState.startsWith('blob:')) {
+          return previewState;
+      }
+      return `${cdnURL}${previewState}`;
+  };
 
-                      <button type="button" onClick={resetImageState} className="btn btn-circle btn-xs bg-red-500 hover:bg-red-600 text-white absolute -top-2 -right-2 shadow-lg z-20" disabled={isSubmitting || loadingStates.imageUpload} aria-label="Remove thumbnail image">
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {loadingStates.imageUpload ? (
-                        <div className="flex flex-col items-center text-center px-4">
-                          <Loader2 className="animate-spin text-indigo-500 mb-3" size={32} />
-                          <p className="text-sm font-medium text-slate-700">Uploading thumbnail...</p>
-                          <progress className="progress progress-primary w-3/4 mt-2" value={imageUploadProgress} max="100"></progress>
-                          <p className="text-xs text-gray-500 mt-1">{`${imageUploadProgress}% complete`}</p>
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-3 mx-auto"><ImageIcon className="w-6 h-6 text-indigo-500" /></div>
-                          <p className="text-sm text-indigo-700 font-medium group-hover:underline">Click or Drag to upload</p>
-                          <p className="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (Max 5MB)</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                {errors.thumbnailImage && <p className="text-red-500 text-xs mt-1">{errors.thumbnailImage}</p>}
-              </div>
+  const handleCoHostSelected = (coHostData) => {
+    setFormData((prev) => ({ ...prev, hasCoHost: true, coHost: coHostData }));
+  };
 
-              {/* --- Preview Video Section (S3) --- */}
-              <div className="form-control mt-6 mb-4">
-                <label className="label"><span className="label-text text-slate-700 font-medium">Preview Video (Optional)</span></label>
-                <div className={`border-2 border-dashed border-indigo-300 rounded-xl p-4 min-h-[220px] flex flex-col justify-center items-center relative group ${loadingStates.videoUpload ? 'bg-slate-50' : 'bg-white hover:bg-indigo-50/50 transition-colors'}`}>
-                  <input
-                    ref={videoInputRef} type="file" accept="video/mp4"
-                    onChange={handleVideoChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    disabled={isSubmitting || loadingStates.videoUpload}
-                  />
-                  {formData.previewVideo ? (
-                    <div className="relative w-full h-full flex items-center justify-center z-30"> {/* z-index was 30, check if needed over X button's 20 */}
-                      <video 
-                        controls 
-                        className="max-h-[180px] max-w-full object-contain rounded-lg shadow-md" 
-                        src={`${CDN_BASE_URL}${formData.previewVideo}`}
-                        key={formData.previewVideo}
-                      />
-                      <button type="button" onClick={resetVideoState} className="btn btn-circle btn-xs bg-red-500 hover:bg-red-600 text-white absolute -top-2 -right-2 shadow-lg z-20" disabled={isSubmitting || loadingStates.videoUpload} aria-label="Remove preview video">
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {loadingStates.videoUpload ? (
-                        <div className="flex flex-col items-center text-center px-4">
-                          <Loader2 className="animate-spin text-indigo-500 mb-3" size={32} />
-                          <p className="text-sm font-medium text-slate-700">Uploading preview...</p>
-                          <progress className="progress progress-primary w-3/4 mt-2" value={videoUploadProgress} max="100"></progress>
-                          <p className="text-xs text-gray-500 mt-1">{`${videoUploadProgress}% complete`}</p>
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-3 mx-auto"><VideoIcon className="w-6 h-6 text-indigo-500" /></div>
-                          <p className="text-sm text-indigo-700 font-medium group-hover:underline">Click or Drag to upload</p>
-                          <p className="text-xs text-gray-500 mt-1">MP4 (e.g., Max 30s, 50MB)</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
+  const handleClearCoHost = () => {
+    setFormData((prev) => ({ ...prev, hasCoHost: false, coHost: null }));
+  };
 
-              {/* Submit Button */}
-              <div className="modal-action mt-8 flex justify-center">
-                <button
-                  type="submit"
-                  className="btn btn-primary min-w-48 text-base" // DaisyUI btn-primary
-                  disabled={isSubmitting || isLoading || loadingStates.imageUpload || loadingStates.videoUpload}
-                >
-                  {isSubmitting ? (
-                    <><Loader2 className="animate-spin mr-2" size={20} />Saving Changes...</>
-                  ) : "Save Changes"}
-                </button>
-              </div>
-            </form>
-          )}
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(prev => ({...prev, submit: true}));
+    try {
+      const scheduledAtUTC = getUtcIsoStringFromLocal(formData.date, formData.time);
+      if (!scheduledAtUTC) throw new Error("Invalid date or time format.");
+
+      const payload = { ...formData, scheduledAt: scheduledAtUTC, coHost: formData.coHost?._id || null, };
+
+      const res = await axiosInstance.put(`${UPDATE_SHOW}/${streamId}`, payload);
+      if (res.data.status) {
+        toast.success("Show updated successfully!");
+        navigate('/seller/allshows');
+      } else {
+        throw new Error(res.data.message || "An unknown error occurred.");
+      }
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error(error.message || "Failed to update show.");
+    } finally {
+        setLoading(prev => ({...prev, submit: false}));
+    }
+  };
+
+
+  if (loading.page || !formData) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-blackLight text-whiteLight p-4">
+        <div className="flex items-center space-x-4">
+          <Loader2 className="w-16 h-16 text-newYellow animate-spin" strokeWidth={1.5} />
+          <div>
+            <h3 className="text-2xl font-semibold text-newYellow animate-pulse">Loading Show Details...</h3>
+            <p className="text-whiteHalf">Please wait, we are preparing the editor.</p>
+          </div>
         </div>
       </div>
-    </>
+    );
+  }
+
+  const isAnyLoading = loading.submit || loading.imageUpload || loading.videoUpload;
+  const currentCategoryObj = categories.find(c => c.categoryName === formData.category);
+
+  return (
+    <div className="bg-blackLight min-h-screen py-6">
+      <div className="w-full mx-auto p-6 px-3 lg:px-12 rounded-xl shadow-xl">
+        <div className="sticky top-0 bg-blackLight z-20 flex items-center justify-between mb-3 pb-2 border-b border-greyLight pt-20 px-2 lg:px-6">
+          <Link to="/seller/allshows" className="inline-flex items-center gap-2 px-1 py-1 rounded-full bg-newYellow shadow-sm border border-yellow-200 text-gray-800 hover:bg-white hover:shadow transition-all duration-200 group">
+            <ArrowLeft size={24} className="text-blackDark group-hover:transform group-hover:-translate-x-1 transition-transform" />
+          </Link>
+          <h1 className="text-newYellow text-2xl lg:text-3xl font-bold text-center">
+            Edit Live Show
+          </h1>
+          <div></div>
+        </div>
+
+        <div className="p-3 lg:p-8 pt-0 overflow-y-auto flex-grow">
+          <form onSubmit={handleSubmit} className="space-y-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="form-control">
+                   <label className="label mb-2">
+                     <span className="label-text text-base font-medium text-whiteLight">Category</span>
+                   </label>
+                   <select 
+                     name="category" value={formData.category} onChange={handleInputChange}
+                     className={`select select-bordered w-full bg-blackDark ${formData.category ? 'text-whiteLight' : 'text-whiteHalf'}`} 
+                     disabled={isAnyLoading}
+                   >
+                     <option value="" disabled>Select Category</option>
+                     {categories.map((cat) => (
+                       <option key={cat._id} value={cat.categoryName}>{cat.categoryName}</option>
+                     ))}
+                   </select>
+                 </div>
+                 
+                 <div className="form-control">
+                   <label className="label mb-2">
+                     <span className="label-text text-base font-medium text-whiteLight">Subcategory</span>
+                   </label>
+                   <select 
+                     name="subCategory" value={formData.subCategory} onChange={handleInputChange}
+                     className={`select select-bordered w-full bg-blackDark ${formData.subCategory ? 'text-whiteLight' : 'text-whiteHalf'}`} 
+                     disabled={!formData.category || isAnyLoading}
+                   >
+                     <option value="" disabled>Select Subcategory</option>
+                     {currentCategoryObj?.subcategories?.map((sub) => (
+                       <option key={sub._id} value={sub.name}>{sub.name}</option>
+                     ))}
+                     {!formData.category && <option value="" disabled>Select a category first</option>}
+                   </select>
+                 </div>
+            </div>
+            <div className="form-control">
+              <label className="label mb-2"><span className="label-text text-base font-medium text-whiteLight flex items-center gap-2"><Type className="text-newYellow" /> Show Title</span></label>
+              <input type="text" name="title" value={formData.title} onChange={handleInputChange}
+                className="input input-bordered text-whiteLight w-full focus:border-newYellow bg-blackDark" disabled={isAnyLoading} />
+            </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="form-control">
+              <label className="label mb-2">
+                <span className="label-text text-base font-medium text-whiteLight flex items-center gap-2">
+                  <Calendar className="text-newYellow"  /> Date
+                </span>
+              </label>
+              <input 
+                type="date" 
+                name="date" 
+                value={formData.date} 
+                onChange={handleInputChange}
+                className="input input-bordered text-whiteLight w-full focus:border-newYellow bg-blackDark [color-scheme:dark] focus:ring-1 focus:ring-newYellow transition-all duration-200" 
+                disabled={isAnyLoading} 
+                min={new Date().toISOString().split("T")[0]}
+              />
+            </div>
+            <div className="form-control">
+              <label className="label mb-2">
+                <span className="label-text text-base font-medium text-whiteLight flex items-center gap-2">
+                  <Clock className="text-newYellow" /> Time
+                </span>
+              </label>
+              <input 
+                type="time" 
+                name="time" 
+                value={formData.time} 
+                onChange={handleInputChange}
+                className="input input-bordered text-whiteLight w-full focus:border-newYellow bg-blackDark [color-scheme:dark] focus:ring-1 focus:ring-newYellow transition-all duration-200" 
+                disabled={isAnyLoading} 
+              />
+            </div>
+          </div>
+
+           
+
+            <div className="form-control">
+                <label className="label mb-2"><span className="label-text text-base font-medium text-whiteLight flex items-center gap-2"><Globe className="text-newYellow" /> Language</span></label>
+                <select name="language" value={formData.language} onChange={handleInputChange} className={`select select-bordered w-full bg-blackDark ${formData.language ? 'text-whiteLight' : 'text-whiteHalf'}`} disabled={isAnyLoading}>
+                    <option disabled value="">Select Language</option>
+                    {indianLanguages.map(lang => <option key={lang.value} value={lang.value}>{lang.label}</option>)}
+                </select>
+            </div>
+
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                  <div className="form-control">
+                      <label className="label"><span className="label-text text-base font-medium text-whiteLight flex items-center gap-2"><Camera className="text-newYellow" /> Thumbnail</span></label>
+                      <div className="flex flex-col items-center justify-center bg-yellowHalf border-2 border-dashed border-newYellow rounded-lg p-4 min-h-[220px]">
+                          <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" disabled={isAnyLoading}/>
+                          {thumbnailPreview ? (
+                              <div className="relative">
+                                  <img src={getDisplayableImageSrc(thumbnailPreview)} alt="Thumbnail Preview" className="max-h-48 object-contain rounded-md shadow-lg"/>
+                                  {loading.imageUpload && <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center rounded-md"><Loader2 className="animate-spin text-newYellow" size={32}/></div>}
+                                  <button type="button" onClick={() => imageInputRef.current?.click()} className="btn btn-circle btn-xs bg-newYellow hover:bg-yellow-300 text-black absolute -top-2 -right-2 shadow-lg" disabled={isAnyLoading} aria-label="Change thumbnail">
+                                      <RotateCcw size={14} />
+                                  </button>
+                              </div>
+                          ) : (
+                              <button type="button" className="btn btn-sm bg-blackDark rounded-full text-newYellow" onClick={() => imageInputRef.current?.click()} disabled={isAnyLoading}>Upload Thumbnail</button>
+                          )}
+                      </div>
+                  </div>
+
+                  <div className="form-control">
+                      <label className="label"><span className="label-text text-base font-medium text-whiteLight flex items-center gap-2"><FileVideo className="text-newYellow" /> Preview Video</span></label>
+                      <div className="flex flex-col items-center justify-center bg-yellowHalf border-2 border-dashed border-newYellow rounded-lg p-4 min-h-[220px]">
+                          <input ref={videoInputRef} type="file" accept="video/mp4" onChange={handleVideoChange} className="hidden" disabled={isAnyLoading}/>
+                          {videoPreview ? (
+                              <div className="relative">
+                                  {signedVideoUrl ?
+                                      <video controls controlsList="nodownload" src={signedVideoUrl} key={signedVideoUrl} className="max-h-48 object-contain rounded-md shadow-lg" /> :
+                                      <div className="h-48 flex items-center justify-center"><Loader2 className="animate-spin text-newYellow" size={32}/></div>
+                                  }
+                                  {loading.videoUpload && <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center rounded-md"><Loader2 className="animate-spin text-newYellow" size={32}/></div>}
+                                  <button type="button" onClick={() => videoInputRef.current?.click()} className="btn btn-circle btn-xs bg-newYellow hover:bg-yellow-300 text-black absolute -top-2 -right-2 shadow-lg" disabled={isAnyLoading} aria-label="Change video">
+                                      <RotateCcw size={14} />
+                                  </button>
+                              </div>
+                          ) : (
+                              <button type="button" className="btn btn-sm bg-blackDark rounded-full text-newYellow" onClick={() => videoInputRef.current?.click()} disabled={isAnyLoading}>Upload Video (Optional)</button>
+                          )}
+                      </div>
+                  </div>
+            </div>
+
+             <CohostSelector
+              onCoHostSelect={handleCoHostSelected}
+              onClearCoHost={handleClearCoHost}
+              isSubmitting={loading.submit}
+              isUploading={isAnyLoading}
+              initialHasCoHost={formData.hasCoHost}
+              initialCoHost={formData.coHost}
+            />
+
+            <div className="divider my-4"></div>
+
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-3 w-full px-4 sm:px-0 py-4">
+              <Link to="/seller/allshows" className="w-full sm:w-auto btn btn-ghost rounded-full bg-greyLight/20 text-whiteLight">
+                <ArrowLeft size={20} /> Cancel
+              </Link>
+              <button type="submit" className="w-full sm:w-auto btn bg-green-600 hover:bg-green-500 text-white rounded-full flex items-center gap-2" disabled={isAnyLoading}>
+                {loading.submit ? <Loader2 className="animate-spin" /> : <Save />}
+                {loading.submit ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   );
 };
 
-export default EditLiveStreamModal;
+export default EditLiveStreamPage;

@@ -58,6 +58,7 @@ import EditShopableForm from "./components/reuse/ShopableVideos/EditShopableForm
 import CohostStream from "./components/reuse/LiveStream/CohostStream.jsx"
 import UserVerificationFlow from "./components/reuse/auth/VerifiedUserApplication.jsx"
 import VerifySeller from "./components/reuse/auth/VerifySeller.jsx"
+import EditLiveStreamPage from "./components/reuse/LiveStream/EditShowForm.jsx"
 
 
 const Home = ({ inputData, setInputData }) => {
@@ -92,8 +93,8 @@ const Home = ({ inputData, setInputData }) => {
           }
         >
           {/* <Route path="" element={<MainFeed />} /> */}
-          <Route path="" element={<MainFeed />} />
-          {/* <Route path="" element={<GlobalSearch />} /> */}
+          {/* <Route path="" element={<MainFeed />} /> */}
+          <Route path="" element={<GlobalSearch />} />
           <Route path="user/:userName" element={<UserProfile />} />
           <Route path="sellerform" element={<SellerFormNew />} />
           <Route path="social-seller-registration" element={<SocialSeller />} />
@@ -145,7 +146,7 @@ const Home = ({ inputData, setInputData }) => {
           <Route path="sellertab" element={<ProductTab />} />
           <Route path="show/:showId" element={<ShowDetailsSeller />} />
           <Route path="stream/:showId" element={<StartStream />} />
-
+          <Route path="edit-show/:streamId" element={<EditLiveStreamPage />} />
           <Route path="createProductListing" element={<LiveStreamProductForm />} />
           <Route path="editProductListing" element={<EditProductListing />} />
           <Route path="productlisting" element={<ProductListing />} />

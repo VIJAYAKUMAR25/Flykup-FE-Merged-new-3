@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { FiX, FiCheck, FiArrowRight, FiClock, FiAlertTriangle } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { FaBell } from "react-icons/fa6";
-import axiosInstance from '../../../utils/axiosInstance'; // Make sure this path is correct
-import {  COHOST_RECIVE } from '../../api/apiDetails'; // Make sure this path is correct
+import axiosInstance from '../../../utils/axiosInstance'; 
+import {  COHOST_RECIVE } from '../../api/apiDetails'; 
 import { useNavigate } from 'react-router-dom';  
-// Separate component for invite cards to improve readability
 const InviteCard = ({ invite, formatDateTime, handleJoin, handleReject, isPast }) => {
   // Determine status based on API response - corrected 'cancelled' spelling
   const isPending = invite.status === "pending";

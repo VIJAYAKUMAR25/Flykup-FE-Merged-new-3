@@ -1,6 +1,6 @@
 
-// export const backendurl ="http://localhost:6969/api/";
-export const backendurl ="https://flykup-be-merged-live-code.vercel.app/api/";
+export const backendurl ="http://localhost:6969/api/";
+// export const backendurl ="https://flykup-be-merged-live-code.vercel.app/api/";
 
 
 // export const backendurl ="https://flykup-be-merged-live-code.onrender.com/api/";
@@ -9,8 +9,8 @@ export const backendurl ="https://flykup-be-merged-live-code.vercel.app/api/";
 export const generateShowLink = "https://app.flykup.live/profile/show";  
 
 // export const socketurl = "https://flykup-be-new.onrender.com" //socket url 
-export const socketurl = "https://flykup-be-socketurl.onrender.com" //socket new url 
-// export const socketurl = "http://localhost:8081"
+// export const socketurl = "https://flykup-be-socketurl.onrender.com" //socket new url 
+export const socketurl = "http://localhost:8081"
 
 export const streamBackendUrl = "https://test-flykup-backend.onrender.com";
 export const mediaSoupServerUrl = 'https://mediaserver.flykup.live';

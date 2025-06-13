@@ -1,982 +1,838 @@
-import { useEffect, useState, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  FiShoppingBag,
-  FiFilm,
-  FiRadio,
-  FiUserPlus,
-  FiMapPin,
-  FiShare2,
-  FiChevronLeft,
-} from "react-icons/fi";
-import { HiSparkles } from "react-icons/hi";
-
-import {
-  UserPlus,
-  MessageCircle,
-  Users,
-  Package,
-  AlertCircle,
-} from "lucide-react";
-import { MdVerified } from "react-icons/md";
-import { toast } from "react-toastify";
-import EditProfileModal from "./ProfileWithBacground.jsx";
-import ProductsFeed from "./ProductsFeed.jsx";
-import ShowsFeed from "./ShowsFeed.jsx";
-import ShoppableVideosFeed from "./ShoppableVideosFeed.jsx";
-import axiosInstance from "../../utils/axiosInstance.js";
-import { useAlert } from "../Alerts/useAlert.jsx";
-import FollowModal from "./FollowModal.jsx";
-import ShipperApplicationBanner from "./ShipperApplicationBanner.jsx";
-
-
-import CohostModal from "../reuse/LiveStream/CoHostModal.jsx";
+import { useEffect, useState } from "react"
+import { Link, useNavigate, useParams } from "react-router-dom"
+import { motion, AnimatePresence } from "framer-motion"
+import { FiShoppingBag, FiFilm, FiRadio, FiUserPlus, FiMapPin, FiShare2, FiChevronLeft } from "react-icons/fi"
+import { UserPlus, MessageCircle, Users, Package, AlertCircle } from "lucide-react"
+import { MdVerified } from "react-icons/md"
+import { toast } from "react-toastify"
+// import EditProfileModal from "./ProfileWithBacground.jsx"
+import ProductsFeed from "./ProductsFeed.jsx"
+import ShowsFeed from "./ShowsFeed.jsx"
+import ShoppableVideosFeed from "./ShoppableVideosFeed.jsx"
+import axiosInstance from "../../utils/axiosInstance.js"
+import { useAlert } from "../Alerts/useAlert.jsx"
+import FollowModal from "./FollowModal.jsx"
+import Logo from "../../assets/images/Logo-Flikup.png"
+import { IoArrowBackCircleOutline } from "react-icons/io5";
+import { GrCirclePlay } from "react-icons/gr"
+import { ImPlay } from "react-icons/im"
+import { HiOutlineShoppingBag } from "react-icons/hi"
+import { BsPlayBtnFill } from "react-icons/bs"
+import EditProfileModal from "./ProfileWithBacground.jsx"
+// import ShipperApplicationBanner from "./ShipperApplicationBanner.jsx"
 
 const UserProfile = () => {
-  const { userName } = useParams();
-  const navigate = useNavigate();
-  const { positive, negative } = useAlert();
+    const { userName } = useParams()
+    const navigate = useNavigate()
+    const { positive, negative } = useAlert()
+    const CDNURL = import.meta.env.VITE_AWS_CDN_URL;
 
-  const [profileData, setProfileData] = useState(null);
-  const [activeTab, setActiveTab] = useState("loading");
-  const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState([]);
-  const [shows, setShows] = useState([]);
-  const [shoppableVideos, setShoppableVideos] = useState([]);
-  const [followInfo, setFollowInfo] = useState({
-    followersCount: 0,
-    followingCount: 0,
-    followStatus: "Follow",
-  });
-  const [localFollowState, setLocalFollowState] = useState({
-    followStatus: "",
-    followersCount: 0,
-  });
-  const [showFollowModal, setShowFollowModal] = useState(false);
-  const [followModalType, setFollowModalType] = useState("followers");
-  const [totalProducts, setTotalProducts] = useState(0);
-  const [totalShows, setTotalShows] = useState(0);
-  const [totalShoppableVideos, setTotalShoppableVideos] = useState(0);
-  const [sellerInfo, setSellerInfo] = useState({});
-  const [shipperInfo, setShipperInfo] = useState({});
-  const [ hostId, setHostId ] = useState(null);
-
-
-  // --- Wrap fetchUser in useCallback for stable reference ---
-  const fetchUser = useCallback(async () => {
-    console.log("UserProfile: Fetching data for", userName);
-    // Set loading true only if profileData isn't already available (prevents full page loading feel on refetch)
-    if (!profileData) {
-      setLoading(true);
-    }
-    try {
-      const response = await axiosInstance.get(`profile/${userName}`);
-      const data = response.data;
-      console.log("UserProfile: Fetched Data:", data);
-
-      // Update core profile data
-      setProfileData(data.data);
-      setFollowInfo(data.data.follow); // Update follow info based on fetched data
-
-      if ( data?.data?.isSeller || data?.data?.isDropshipper){
-          setHostId(data.data?.hostId)
-      }
-
-      // Update content based on fetched data
-      if (data.data.isSeller) {
-        const {
-          counts,
-          products,
-          sellerInfo: sellerData,
-          shows,
-          shoppableVideos,
-        } = data.data.seller;
-        setProducts(products);
-        setShows(shows);
-        setShoppableVideos(shoppableVideos);
-        setTotalProducts(counts.totalProducts);
-        setTotalShows(counts.totalShows);
-        setTotalShoppableVideos(counts.totalShoppableVideos);
-        setSellerInfo(sellerData);
-        // Set active tab only if it needs initialization or resetting
-        setActiveTab((currentTab) =>
-          currentTab === "loading" ||
-          !["shop", "videos", "shows"].includes(currentTab)
-            ? "shop"
-            : currentTab
-        );
-      } else if (data.data.isDropshipper) {
-        const {
-          counts,
-          shipperInfo: shipperData,
-          shows,
-          shoppableVideos,
-        } = data.data.dropshipper;
-        setShows(shows);
-        setShoppableVideos(shoppableVideos);
-        setTotalShows(counts.totalShows);
-        setTotalShoppableVideos(counts.totalShoppableVideos);
-        setShipperInfo(shipperData);
-        setActiveTab((currentTab) =>
-          currentTab === "loading" || !["videos", "shows"].includes(currentTab)
-            ? "videos"
-            : currentTab
-        );
-      } else if (data.data.isOwnProfile) {
-        setActiveTab((currentTab) =>
-          currentTab === "loading" ||
-          !["becomeSeller", "address"].includes(currentTab)
-            ? "becomeSeller"
-            : currentTab
-        );
-      } else {
-        setActiveTab((currentTab) =>
-          currentTab === "loading" || currentTab !== "none"
-            ? "none"
-            : currentTab
-        );
-      }
-    } catch (error) {
-      console.error("UserProfile: Error fetching user:", error);
-      toast.error("Failed to fetch user profile");
-      setProfileData(null); // Clear data on error
-      setActiveTab("error"); // Set a distinct tab state for error
-    } finally {
-      setLoading(false); // Always set loading false after attempt
-    }
-  }, [userName]); // userName is the primary trigger for fetching
-
-  // Fetch user data when userName changes
-  useEffect(() => {
-    if (userName) {
-      setActiveTab("loading"); // Reset tab state on user change
-      fetchUser();
-    }
-    // Cleanup function
-    return () => {};
-  }, [userName, fetchUser]); // Run when userName changes
-
-  // Update local follow state derived from followInfo
-  useEffect(() => {
-    if (followInfo) {
-      setLocalFollowState({
-        followStatus: followInfo.followStatus,
-        followersCount: followInfo.followersCount,
-      });
-    }
-  }, [followInfo]);
-
-  // --- Define the callback for the modal ---
-  // Depends only on the stable fetchUser function
-  const handleProfileUpdate = useCallback(() => {
-    console.log(
-      "UserProfile: handleProfileUpdate triggered, re-fetching profile data."
-    );
-    fetchUser(); // Re-run the fetch logic
-  }, [fetchUser]);
-
- 
-  // Define tabs configuration (kept as is)
-  const tabs = [
-    { id: "shop", label: "Shop", icon: FiShoppingBag, role: "seller" },
-    { id: "videos", label: "ShopClips", icon: FiFilm, role: "seller" },
-    { id: "shows", label: "Shows", icon: FiRadio, role: "seller" },
-    { id: "videos", label: "ShopClips", icon: FiFilm, role: "dropshipper" },
-    { id: "shows", label: "Shows", icon: FiRadio, role: "dropshipper" },
-    {
-      id: "becomeSeller",
-      label: "Become a Host",
-      icon: FiUserPlus,
-      role: "user",
-      ownerOnly: true,
-    },
-    {
-      id: "address",
-      label: "Address",
-      icon: FiMapPin,
-      role: "user",
-      ownerOnly: true,
-    },
-  ];
-
-  // Filter visible tabs based on profileData (calculate only when profileData is available)
-  const visibleTabs = profileData
-    ? tabs.filter((tab) => {
-        let shouldShow = false;
-        if (profileData.isSeller && tab.role === "seller") shouldShow = true;
-        if (profileData.isDropshipper && tab.role === "dropshipper")
-          shouldShow = true;
-        if (tab.role === "user") {
-          if (tab.id === "becomeSeller") {
-            shouldShow =
-              profileData.isOwnProfile &&
-              !profileData.isSeller &&
-              !profileData.isDropshipper;
-          } else if (tab.id === "address") {
-            shouldShow = profileData.isOwnProfile;
-          } else {
-            shouldShow = profileData.isOwnProfile && tab.ownerOnly === true;
-          }
-        }
-        // Apply exclusion rules
-        if (shouldShow) {
-          if (tab.ownerOnly === true && !profileData.isOwnProfile) {
-            shouldShow = false;
-          }
-          if (profileData.isDropshipper && tab.id === "shop") {
-            shouldShow = false;
-          }
-          if (profileData.isDropshipper && tab.id === "address") {
-            shouldShow = false;
-          }
-        }
-        return shouldShow;
-      })
-    : []; // Return empty array if profileData is not loaded
-
-  // Render tab content (ensure currentUserInfo exists)
-  const renderTabContent = () => {
-    // Show loading indicator inside tab content area if profile data is loaded but content might still be fetching/processing
-    if (loading && profileData) {
-      return (
-        <div className="flex justify-center p-10">
-          <span className="loading loading-dots loading-lg text-amber-500"></span>
-        </div>
-      );
-    }
-
-    const currentUserInfo = profileData?.user;
-    if (!currentUserInfo) {
-      // Check specifically for user info within profileData
-      // This case might overlap with the main loading/error states handled below
-      // If activeTab is 'error', show error message
-      if (activeTab === "error") {
-        return (
-          <div className="text-center p-10 text-error">
-            Could not load content for this tab.
-          </div>
-        );
-      }
-      // Otherwise, if still loading generally or data missing
-      return (
-        <div className="flex justify-center p-10">
-          <span className="loading loading-dots loading-lg text-amber-500"></span>
-        </div>
-      );
-    }
-
-    switch (activeTab) {
-      case "shop":
-        return profileData?.isSeller ? (
-          <ProductsFeed
-            totalProducts={totalProducts}
-            products={products}
-            sellerInfo={sellerInfo}
-            userInfo={currentUserInfo}
-          />
-        ) : null;
-
-      case "videos":
-        return profileData?.isSeller || profileData?.isDropshipper ? (
-          <ShoppableVideosFeed
-            totalShoppableVideos={totalShoppableVideos}
-            hostId= {hostId}
-            shoppableVideos={shoppableVideos}
-            sellerInfo={sellerInfo} // Pass relevant info based on role if needed
-            userInfo={currentUserInfo}
-          />
-        ) : null;
-
-      case "shows":
-        return profileData?.isSeller || profileData?.isDropshipper ? (
-          <ShowsFeed
-            totalShows={totalShows}
-            hostId= {hostId}
-            shows={shows}
-            sellerInfo={sellerInfo} // Pass relevant info based on role if needed
-            userInfo={currentUserInfo}
-          />
-        ) : null;
-
-      case "becomeSeller":
-        if (
-          profileData?.isOwnProfile &&
-          !profileData?.isSeller &&
-          !profileData?.isDropshipper
-        ) {
-          return (
-            <motion.div
-              /* ... */ className="card bg-gradient-to-br from-amber-50 to-amber-100 shadow-lg"
-            >
-              <div className="card-body text-center">
-                <h2 className="card-title text-2xl font-bold justify-center mb-2">
-                  Become a Host
-                </h2>
-                <p className="text-gray-700 mb-6">
-                  Start your selling journey today! Join our community of
-                  sellers.
-                </p>
-                <div className="card-actions justify-center">
-                  <button className="btn btn-primary bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 border-none text-black font-semibold px-8">
-                    Get Started
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          );
-        }
-        return null;
-
-      case "address":
-        if (profileData?.isOwnProfile && !profileData?.isDropshipper) {
-          return (
-            <motion.div /* ... */ className="card bg-base-100 shadow-lg">
-              <div className="card-body">
-                <h2 className="card-title text-xl font-semibold mb-4">
-                  Saved Addresses
-                </h2>
-                <div className="card-actions">
-                  <button className="btn btn-outline btn-warning w-full">
-                    Add New Address
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          );
-        }
-        return null;
-
-      case "none":
-        return (
-          <div className="text-center p-10">
-            <p className="text-gray-500">
-              This user hasn't set up a shop or hosting profile yet.
-            </p>
-          </div>
-        );
-
-      case "loading": // Explicitly handle loading state within tabs
-        return (
-          <div className="flex justify-center p-10">
-            <span className="loading loading-dots loading-lg text-amber-500"></span>
-          </div>
-        );
-
-      case "error": // Explicitly handle error state within tabs
-        return (
-          <div className="text-center p-10 text-error">
-            Failed to load profile content.
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  // Handle share functionality
-  const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/user/${userName}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Check out ${profileData?.user?.name}'s profile`,
-          url: shareUrl,
-        });
-      } catch (error) {
-        console.error("Error sharing:", error);
-        navigator.clipboard.writeText(shareUrl);
-        positive("Profile link copied to clipboard!");
-      }
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-      positive("Profile link copied to clipboard!");
-    }
-  };
-
-  // Handle follow/unfollow actions
-  const handleFollowClick = async () => {
-    if (!profileData?.user?._id) return; // Guard clause
-    const originalState = { ...localFollowState };
-    try {
-      // Optimistic update
-      setLocalFollowState((prevState) => ({
-        followStatus: "Following",
-        followersCount: prevState.followersCount + 1,
-      }));
-      const response = await axiosInstance.post(`follow`, {
-        targetUserId: profileData.user._id,
-      });
-      positive(response.data.message);
-    } catch (error) {
-      // Revert on error
-      setLocalFollowState(originalState);
-      console.error("Error following user:", error);
-      negative(error.response?.data?.message || "Failed to follow user");
-    }
-  };
-
-  const handleUnFollowClick = async () => {
-    if (!profileData?.user?._id) return; // Guard clause
-    const originalState = { ...localFollowState };
-    try {
-      // Optimistic update
-      setLocalFollowState((prevState) => ({
+    const [profileData, setProfileData] = useState(null)
+    const [activeTab, setActiveTab] = useState("shop")
+    const [loading, setLoading] = useState(true)
+    const [products, setProducts] = useState([])
+    const [shows, setShows] = useState([])
+    const [shoppableVideos, setShoppableVideos] = useState([])
+    const [followInfo, setFollowInfo] = useState({
+        followersCount: 0,
+        followingCount: 0,
         followStatus: "Follow",
-        followersCount: Math.max(0, prevState.followersCount - 1), // Prevent negative count
-      }));
-      const response = await axiosInstance.delete(`follow`, {
-        data: { targetUserId: profileData.user._id },
-      });
-      positive(response.data.message);
-    } catch (error) {
-      // Revert on error
-      setLocalFollowState(originalState);
-      console.error("Error unfollowing user:", error);
-      negative(error.response?.data?.message || "Failed to unfollow user");
+    })
+    const [localFollowState, setLocalFollowState] = useState({
+        followStatus: "",
+        followersCount: 0,
+    })
+    const [showFollowModal, setShowFollowModal] = useState(false)
+    const [followModalType, setFollowModalType] = useState("followers")
+    const [totalProducts, setTotalProducts] = useState(0)
+    const [totalShows, setTotalShows] = useState(0)
+    const [totalShoppableVideos, setTotalShoppableVideos] = useState(0)
+    const [sellerInfo, setSellerInfo] = useState({})
+    const [shipperInfo, setShipperInfo] = useState({})
+
+    // Update local follow state when followInfo changes
+    useEffect(() => {
+        if (followInfo) {
+            setLocalFollowState({
+                followStatus: followInfo.followStatus,
+                followersCount: followInfo.followersCount,
+            })
+        }
+    }, [followInfo])
+
+    // Fetch user data
+    useEffect(() => {
+        const fetchUser = async () => {
+            setLoading(true)
+            try {
+                const response = await axiosInstance.get(`profile/${userName}`)
+                const data = response.data
+                console.log("User Data:", data);
+                setProfileData(data.data)
+                setFollowInfo(data.data.follow)
+
+                if (data.data.isSeller) {
+                    const { counts, products, sellerInfo: sellerData, shows, shoppableVideos } = data.data.seller
+                    setProducts(products)
+                    setShows(shows)
+                    setShoppableVideos(shoppableVideos)
+                    setTotalProducts(counts.totalProducts)
+                    setTotalShows(counts.totalShows)
+                    setTotalShoppableVideos(counts.totalShoppableVideos)
+                    setSellerInfo(sellerData)
+                    setActiveTab("shop")
+                } else if (data.data.isDropshipper) {
+                    const { counts, shipperInfo: shipperData, shows, shoppableVideos } = data.data.dropshipper
+                    setShows(shows)
+                    setShoppableVideos(shoppableVideos)
+                    setTotalShows(counts.totalShows)
+                    setTotalShoppableVideos(counts.totalShoppableVideos)
+                    setShipperInfo(shipperData)
+                    setActiveTab("videos") // Default tab for dropshippers
+                } else if (data.data.isOwnProfile) {
+                    setActiveTab("becomeSeller")
+                } else {
+                    setActiveTab("none")
+                }
+            } catch (error) {
+                console.error("Error fetching user:", error)
+                toast.error("Failed to fetch user profile")
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        if (userName) {
+            fetchUser()
+        }
+    }, [userName])
+
+
+
+    const tabs = [
+        // Seller Tabs
+        { id: "shows", label: "Shows", icon: GrCirclePlay, role: "seller" }, // Shows hosted by seller
+        { id: "shop", label: "Shop", icon: HiOutlineShoppingBag, role: "seller" },
+        { id: "videos", label: "ShopClips", icon: BsPlayBtnFill, role: "seller" }, // Videos created by seller
+
+        // Dropshipper Tabs (Assuming they use same components for hosted content)
+        // Note: Backend needs to provide hosted shows/videos for dropshippers
+        // { id: "shows", label: "Shows", icon: FiRadio, role: "dropshipper" }, // Shows hosted by dropshipper
+        // { id: "videos", label: "ShopClips", icon: FiFilm, role: "dropshipper" }, // Videos hosted by dropshipper
+
+        // Owner-Specific Tabs (User Role)
+        // { id: "becomeSeller", label: "Become a Host", icon: FiUserPlus, role: "user", ownerOnly: true },
+        // { id: "address", label: "Address", icon: FiMapPin, role: "user", ownerOnly: true },
+    ]
+
+    // --- UPDATED: Filter visible tabs based on user type ---
+    const visibleTabs = tabs.filter((tab) => {
+        // Start with basic role matching assumption
+        let shouldShow = false
+
+        // Match seller tabs if the profile user is a seller
+        if (profileData?.isSeller && tab.role === "seller") shouldShow = true
+
+        // Match dropshipper tabs if the profile user is a dropshipper
+        if (profileData?.isDropshipper && tab.role === "dropshipper") shouldShow = true
+
+        // Handle 'user' role tabs (owner-specific actions)
+        if (tab.role === "user") {
+            if (tab.id === "becomeSeller") {
+                // Show only if owner AND *not* already a Seller AND *not* already a Dropshipper
+                shouldShow = profileData?.isOwnProfile && !profileData?.isSeller && !profileData?.isDropshipper
+            } else if (tab.id === "address") {
+                // Show only if owner
+                shouldShow = profileData?.isOwnProfile
+            } else {
+                // Fallback for any other 'user' role tabs
+                shouldShow = profileData?.isOwnProfile && tab.ownerOnly === true
+            }
+        }
+
+        // Apply exclusion rules IF shouldShow is currently true
+        if (shouldShow) {
+            // Rule 1: Hide ownerOnly tabs if not the owner viewing their own profile
+            // (This check is slightly redundant due to logic above but adds safety)
+            if (tab.ownerOnly === true && !profileData?.isOwnProfile) {
+                shouldShow = false
+            }
+            // Rule 2: Hide Shop tab if the profile belongs to a Dropshipper (even if they are also technically a seller in DB)
+            if (profileData?.isDropshipper && tab.id === "shop") {
+                shouldShow = false
+            }
+            // Rule 3: Hide Address tab if the profile user is a Dropshipper (as requested)
+            if (profileData?.isDropshipper && tab.id === "address") {
+                shouldShow = false
+            }
+        }
+
+        return shouldShow
+    })
+
+    // Handle share functionality
+    const handleShare = async () => {
+        const shareUrl = `${window.location.origin}/${userName}`
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Check out ${profileData?.user?.name}'s profile`,
+                    url: shareUrl,
+                })
+            } catch (error) {
+                console.error("Error sharing:", error)
+                navigator.clipboard.writeText(shareUrl)
+                positive("Profile link copied to clipboard!")
+            }
+        } else {
+            navigator.clipboard.writeText(shareUrl)
+            positive("Profile link copied to clipboard!")
+        }
     }
-  };
 
-  // Profile skeleton for loading state
-  const ProfileSkeleton = () => (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-amber-100">
-      {/* Cover Photo Skeleton */}
-      <div className="h-64 bg-gradient-to-r from-gray-200 to-gray-300 animate-pulse relative">
-        <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
-          <div className="w-32 h-32 rounded-full bg-gradient-to-r from-gray-300 to-gray-200 animate-pulse border-4 border-white shadow-lg"></div>
-        </div>
-      </div>
-      {/* Profile Content Skeleton */}
-      <div className="container mx-auto pt-20">
-        <div className="card bg-base-100 shadow-xl">
-          {/* Profile Header Skeleton */}
-          <div className="card-body pt-6">
-            {/* ... Rest of skeleton structure ... */}
-          </div>
-          {/* Tabs Navigation Skeleton */}
-          <div className="border-t border-base-200">
-            {/* ... Tabs skeleton ... */}
-          </div>
-          {/* Tab Content Skeleton */}
-          <div className="p-6">{/* ... Content skeleton ... */}</div>
-        </div>
-      </div>
-    </div>
-  );
+    // Handle follow/unfollow actions
+    const handleFollowClick = async () => {
+        try {
+            setLocalFollowState({
+                followStatus: "Following",
+                followersCount: localFollowState.followersCount + 1,
+            })
+            const response = await axiosInstance.post(`follow`, {
+                targetUserId: profileData?.user?._id,
+            })
+            positive(response.data.message)
+        } catch (error) {
+            setLocalFollowState({
+                followStatus: "Follow",
+                followersCount: localFollowState.followersCount - 1,
+            })
+            console.error("Error following user:", error)
+            negative("Failed to follow user")
+        }
+    }
 
-  // Get user initials for profile image fallback
-  const getUserInitials = (username) => {
-    if (!username) return "??";
-    const alphanumericChars = username.replace(/[^a-zA-Z0-9]/g, "");
-    if (!alphanumericChars) return "??";
-    return alphanumericChars.substring(0, 2).toUpperCase();
-  };
+    const handleUnFollowClick = async () => {
+        try {
+            setLocalFollowState({
+                followStatus: "Follow",
+                followersCount: localFollowState.followersCount - 1,
+            })
+            const response = await axiosInstance.delete(`follow`, {
+                data: { targetUserId: profileData?.user?._id },
+            })
+            positive(response.data.message)
+        } catch (error) {
+            setLocalFollowState({
+                followStatus: "Following",
+                followersCount: localFollowState.followersCount + 1,
+            })
+            console.error("Error unfollowing user:", error)
+            negative("Failed to unfollow user")
+        }
+    }
 
-  // --- Render Logic ---
+    const getUserInitials = (userName) => {
+        if (!userName) return "??"
+        const alphanumericChars = userName.replace(/[^a-zA-Z0-9]/g, "")
+        if (!alphanumericChars) return "??"
+        return alphanumericChars.substring(0, 2).toUpperCase()
+    }
 
-  // 1. Show Skeleton during initial load when profileData is null
-  if (loading && !profileData) {
-    return <ProfileSkeleton />;
-  }
+    const userInitials = getUserInitials(profileData?.user?.userName)
 
-  // 2. Show Error message if fetching failed and profileData is still null
-  if (!loading && !profileData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-amber-50 to-amber-100">
-        <div className="card bg-base-100 shadow-lg">
-          <div className="card-body text-center">
-            <AlertCircle className="w-16 h-16 text-error mx-auto mb-4" />
-            <h2 className="card-title text-xl justify-center">
-              Failed to load profile data
-            </h2>
-            <p className="text-gray-500">Please try refreshing the page.</p>
-            <div className="card-actions justify-center mt-4">
-              <button onClick={() => navigate(-1)} className="btn btn-ghost">
-                Go Back
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="btn btn-primary"
-              >
-                Refresh
-              </button>
+    // Profile skeleton for loading state
+    const ProfileSkeleton = () => (
+        <div className="min-h-screen bg-gradient-to-r from-[#0F0F0F] via-[#1A1A1A] to-[#2A2A2A]">
+            {/* Cover Photo Skeleton */}
+            <div className="h-64 md:h-80 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 animate-pulse relative rounded-xl">
+                {/* Faded Overlay structure - no visual change in skeleton */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-amber-900/10">
+                    {/* Back Button Skeleton */}
+                    <div className="absolute top-4 left-4 w-8 h-8 rounded-full bg-gray-600 animate-pulse"></div>
+                    {/* Share/Edit Buttons Skeleton */}
+                    <div className="absolute top-4 right-4 flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-600 animate-pulse"></div>
+                        {/* Placeholder for potential Edit button */}
+                        <div className="w-8 h-8 rounded-full bg-gray-600 animate-pulse"></div>
+                    </div>
+                </div>
+
+                {/* Profile Image Skeleton */}
+                <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
+                    <div className="relative">
+                        {/* Main avatar circle */}
+                        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 animate-pulse ring-4 ring-amber-600/30 ring-offset-2 ring-offset-[#1A1A1A] shadow-xl"></div>
+                        {/* Verified Badge Skeleton (optional placeholder) */}
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gray-600 animate-pulse shadow-lg"></div>
+                    </div>
+                </div>
             </div>
-          </div>
+
+            {/* Profile Content Skeleton */}
+            <div className="px-4 pt-20 pb-6">
+                <div className="card bg-gradient-to-r from-[#0F0F0F] via-[#1A1A1A] to-[#2A2A2A] shadow-xl overflow-hidden">
+
+                    {/* User Info Skeleton */}
+                    <div className="text-center px-4 pt-5">
+                        {/* Name Skeleton */}
+                        <div className="h-8 w-48 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse mx-auto rounded-lg mb-3"></div>
+                        {/* Role Badge Skeleton */}
+                        <div className="h-5 w-36 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse mx-auto rounded-full py-3 mb-2"></div>
+                        {/* Bio Skeleton */}
+                        <div className="h-4 w-72 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse mx-auto rounded-lg mb-2 mt-3"></div>
+                        <div className="h-4 w-64 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse mx-auto rounded-lg mb-3"></div>
+
+                        <div className="flex items-center justify-center gap-2 mt-2 mb-3">
+                            <div className="h-5 w-5 rounded-full bg-yellow-700/50 animate-pulse mr-1"></div> {/* Star */}
+                            <div className="h-5 w-8 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse rounded"></div> {/* Rating */}
+                            <div className="h-5 w-24 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse rounded"></div> {/* Reviews */}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-4 mt-6 max-w-3xl mx-auto">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="text-center">
+                                <div className="h-6 w-12 md:w-16 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse mx-auto rounded-lg mb-1"></div>
+                                <div className="h-4 w-16 md:w-20 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse mx-auto rounded-lg"></div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-center gap-4 mt-6">
+                        <div className="h-10 w-28 bg-gradient-to-r from-yellow-700/50 to-yellow-800/50 animate-pulse rounded-2xl"></div>
+                        <div className="h-10 w-28 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse rounded-2xl"></div>
+                        <div className="h-10 w-28 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse rounded-2xl"></div>
+                    </div>
+
+                    <div className="flex justify-center mt-8 border-b border-gray-800">
+                        <div className="flex">
+                            {[1, 2, 3].map((i) => (
+                                <div
+                                    key={i}
+                                    className="flex items-center justify-center py-4 px-8"
+                                >
+                                    <div className="h-5 w-5 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse rounded mr-2"></div> {/* Icon */}
+                                    <div className="h-5 w-16 bg-gradient-to-r from-gray-700 to-gray-800 animate-pulse rounded"></div> {/* Label */}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="p-4 sm:p-6 min-h-[300px]">
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                                <div key={i} className="aspect-square bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 animate-pulse rounded-lg"></div>
+                            ))}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
-      </div>
     );
-  }
 
-  // 3. Render the main profile content if profileData exists
-  // Destructure needed data *after* confirming profileData exists
-  const { user, isOwnProfile, isSeller, isDropshipper } = profileData;
-  const userInitials = getUserInitials(user?.userName);
-   const showButton = isOwnProfile && (isSeller || isDropshipper);
+    useEffect(() => {
+        if (profileData?.user?.name) {
+            document.title = `${profileData?.user.name} | Profile`;
+        } else {
+            document.title = "Profile";
+        }
+    }, [profileData?.user]);
 
 
+    // Render the component
+    if (loading) {
+        return <ProfileSkeleton />
+    }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-amber-100">
-      {/* Cover Photo */}
-      <div
-        className="h-64 md:h-80 bg-cover bg-center relative"
-        style={{
-          backgroundImage: `url(${
-            user.backgroundCoverURL?.azureUrl || "/api/placeholder/1200/300"
-          })`,
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-amber-500/30">
-          {/* Back Button */}
-          <button
-            onClick={() => navigate(-1)}
-            className="btn btn-circle btn-sm absolute top-4 left-4 bg-white/90 hover:bg-white text-black border-none shadow-md"
-            aria-label="Go back"
-          >
-            <FiChevronLeft className="text-xl" />
-          </button>
-          {/* Action Buttons */}
-         <div className="flex gap-3 absolute top-4 right-4">
-            {/* Existing Share button */}
-            <button
-              onClick={handleShare}
-              className="btn btn-circle btn-sm bg-white/90 hover:bg-white text-black border-none shadow-md"
-            >
-              <FiShare2 />
-            </button>
-            {/* Existing Edit Profile Modal */}
-            {isOwnProfile && <EditProfileModal onProfileUpdate={handleProfileUpdate} />}
-            {isOwnProfile && (
-        <motion.button
-          className="relative flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-full font-medium text-sm shadow-lg overflow-hidden group"
-          onClick={() => navigate("/user/verified-user")}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* Background gradient animation on hover */}
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-700"
-            initial={{ x: "100%" }}
-            whileHover={{ x: 0 }}
-            transition={{ duration: 0.3 }}
-          />
-          
-          {/* Icon with rotation animation */}
-          <motion.div
-            className="relative z-10"
-            initial={{ rotate: 0 }}
-            whileHover={{ 
-              rotate: [0, -10, 10, -10, 0],
-              scale: 1.1 
-            }}
-            transition={{ 
-              rotate: { duration: 0.5 },
-              scale: { duration: 0.2 }
-            }}
-          >
-            <MdVerified className="w-5 h-5" />
-          </motion.div>
-          
-          {/* Text with underline effect */}
-          <span className="relative z-10 font-semibold">
-            Verify Account
-            <motion.div
-              className="absolute bottom-0 left-0 w-full h-0.5 bg-white/30"
-              initial={{ scaleX: 0 }}
-              whileHover={{ scaleX: 1 }}
-              transition={{ duration: 0.3 }}
-            />
-          </span>
-          
-          {/* Ripple effect */}
-          <motion.div
-            className="absolute inset-0 rounded-full"
-            initial={{ scale: 0, opacity: 0.5 }}
-            whileHover={{ 
-              scale: 2, 
-              opacity: 0,
-            }}
-            transition={{ duration: 0.6 }}
-            style={{
-              background: "radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)",
-            }}
-          />
-          
-          {/* Subtle glow effect */}
-          <motion.div
-            className="absolute -inset-1 rounded-full bg-emerald-400/30 blur-md"
-            initial={{ opacity: 0 }}
-            whileHover={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          />
-        </motion.button>
-      )}
-          </div>
-        </div>
-
-        {/* Profile Image */}
-        <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
-          <motion.div
-            className="relative group"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          >
-            {/* Avatar itself */}
-            <div className="avatar online">
-              <div className="w-32 h-32 rounded-full ring ring-amber-400 ring-offset-2 ring-offset-base-100 shadow-xl overflow-hidden">
-                {user.profileURL?.azureUrl ? (
-                  <img
-                    src={user.profileURL.azureUrl}
-                    alt={
-                      user.userName
-                        ? `${user.userName}'s profile`
-                        : "User profile"
-                    }
-                    className="w-full h-full object-cover"
-                    loading="eager" // Load profile pic eagerly
-                  />
-                ) : (
-                  <div
-                    className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-500 text-white font-bold text-4xl"
-                    aria-label={
-                      user.userName
-                        ? `${user.userName}'s profile initials`
-                        : "User profile initials"
-                    }
-                  >
-                    {userInitials}
-                  </div>
-                )}
-              </div>
+    if (!profileData) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-black">
+                <div className="card bg-gray-900 shadow-lg border border-gray-800">
+                    <div className="card-body text-center">
+                        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                        <h2 className="card-title text-xl justify-center text-white">Failed to load profile data</h2>
+                        <p className="text-gray-400">Please try again later</p>
+                        <div className="card-actions justify-center mt-4">
+                            <button onClick={() => navigate(-1)} className="btn bg-yellow-400 hover:bg-yellow-500 text-black">
+                                Go Back
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
+        )
+    }
 
-            {/* Verified badge */}
-            {(isSeller || isDropshipper) && (
-              <motion.div
-                className="absolute -bottom-3 right-12 bg-base-100 rounded-full p-0.5 leading-none shadow"
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 15,
-                  delay: 0.15,
-                }} 
-              >
-                {/* Added 'block' to prevent potential inline spacing issues */}
-                <MdVerified size={24} className="text-amber-500 block" />
-              </motion.div>
-            )}
-          </motion.div>
-        </div>
-      </div>
+    const { user, isOwnProfile, isSeller, isDropshipper } = profileData
 
-      {/* Profile Content Area */}
-      <div className="container mx-auto px-4 pt-20 pb-6">
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.4 }}
-          className="card bg-base-100 shadow-xl overflow-hidden"
-        >
-          {/* User Info */}
-          <div className="card-body pt-4 md:pt-6 z-10">
-            <div className="text-center px-4 md:px-8">
-              <div className="flex flex-col lg:flex-row items-center justify-center gap-2">
-                  <motion.h1 className="text-2xl sm:text-3xl font-bold">
-                    {user.name}
-                  </motion.h1>
-                  
-                  {showButton && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="relative"
-                    >
-                      <motion.button
-                        className="relative group flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 text-white rounded-2xl font-semibold text-sm shadow-xl overflow-hidden"
-                        onClick={() => navigate("/user/verify-seller")}
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        style={{
-                          backgroundSize: "200% 100%",
-                          backgroundPosition: "0% 50%",
-                        }}
-                        animate={{
-                          backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-                        }}
-                        transition={{
-                          backgroundPosition: {
-                            duration: 5,
-                            repeat: Infinity,
-                            ease: "linear",
-                          },
-                        }}
-                      >
-                        {/* Shimmer effect */}
+    return (
+        <div className="min-h-screen bg-gradient-to-r from-[#0F0F0F] via-[#1A1A1A] to-[#0f0f0f] shadow-lg border border-stone-800 text-white">
+
+            <div className=" container mx-auto">
+
+                {/* Logo Header */}
+                {/* <div className="hidden py-4 px-6">
+                    <Link to="/">
+                        <img src={Logo || "/placeholder.svg"} alt="Logo" className="md:w-28 w-20 object-contain" />
+                    </Link>
+                </div> */}
+
+                {/* Cover Photo - Smoke Background */}
+                <div
+                    className="md:h-60 h-36 bg-cover bg-center md:rounded-lg rounded-b-sm relative"
+                    style={{
+                        backgroundImage: `url(${user.backgroundCoverURL?.key ? CDNURL + user.backgroundCoverURL.key : "/smoke-background.jpg"})`,
+                        backgroundSize: "cover"
+                    }}
+                >
+                    {/* Profile Image */}
+                    <div className="hidden absolute -bottom-20 left-1/2 md:left-20 transform -translate-x-1/2 md:translate-x-0">
+                        {/* Animation Wrapper */}
                         <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                          initial={{ x: "-100%" }}
-                          animate={{ x: "100%" }}
-                          transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            repeatDelay: 1,
-                          }}
-                        />
-
-                        {/* Icon with animation */}
-                        <motion.div
-                          className="relative z-10 flex items-center justify-center"
-                          animate={{
-                            rotate: [0, 15, -15, 0],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            repeatDelay: 3,
-                          }}
+                            className="relative group"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1.1, opacity: 1 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 20 }}
                         >
-                          <FiShoppingBag className="w-4 h-4" />
+                            <div className="avatar">
+                                <div
+                                    className="
+                                        w-40 h-40                                    
+                                        rounded-full
+                                        overflow-hidden                                     
+                                        ring-2 ring-newYellow     
+                                        ring-offset-2 ring-offset-[#1A1A1A] 
+                                        shadow-[0_0_15px_rgba(251,191,36,0.4)] 
+                                        transition-transform duration-300 ease-in-out hover:scale-[1.03]
+                                    "
+                                >
+                                    {user.profileURL?.key ? (
+                                        <img
+                                            src={
+                                                user.profileURL?.key
+                                                    ? `${CDNURL}${user.profileURL.key}`
+                                                    : "/placeholder.svg"
+                                            }
+                                            alt={user.userName ? `${user.userName}'s profile` : "User profile"}
+                                            className="w-full h-full object-cover"
+                                            loading="eager"
+                                            onError={(e) => {
+                                                console.error("Failed to load profile image:", user.profileURL.key);
+                                            }}
+                                        />
+                                    ) : (
+                                        <div
+                                            className="
+                                                w-full h-full flex items-center justify-center
+                                                bg-gradient-to-br from-amber-300 to-yellow-400 
+                                                text-white font-bold text-5xl /* Adjusted font size for w-40 avatar */
+                                                select-none /* Prevent text selection */
+                                            "
+                                            aria-label={user.userName ? `${user.userName}'s profile initials` : "User profile initials"}
+                                        >
+                                            {userInitials}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Verified Badge - Hidden as per your last code snippet */}
+                            {(isSeller || isDropshipper) && (
+                                <motion.div
+                                    className="hidden absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-lg" // Kept hidden
+                                    initial={{ scale: 0, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.5, type: "spring" }}
+                                    title="Verified"
+                                >
+                                    <MdVerified size={24} className="text-amber-500" />
+                                </motion.div>
+                            )}
                         </motion.div>
+                    </div>
 
-                        {/* Text */}
-                        <span className="relative z-10 flex items-center gap-1.5">
-                          <span className="font-bold tracking-wide">Premium Seller</span>
-                          
-                          {/* Sparkle icon */}
-                          <motion.div
-                            animate={{
-                              scale: [1, 1.2, 1],
-                              opacity: [0.7, 1, 0.7],
-                            }}
-                            transition={{
-                              duration: 1.5,
-                              repeat: Infinity,
-                            }}
-                          >
-                            <HiSparkles className="w-4 h-4 text-yellow-300" />
-                          </motion.div>
-                        </span>
+                    <div className="hidden absolute top-2 left-2 shadow-md">
+                        <IoArrowBackCircleOutline size={24} />
+                    </div>
+                    <div className="hidden absolute top-2 right-2">
+                        <button className="btn btn-outline btn-xs rounded-full text-white shadow-md">Become a verified seller</button>
+                    </div>
+                </div>
 
-                        {/* Floating particles */}
-                        <div className="absolute inset-0 pointer-events-none">
-                          {[...Array(3)].map((_, i) => (
+                {/* Profile Content */}
+                <div className="container mx-auto px-4 pt-2 ">
+
+                    {/* Web view */}
+                    <div className="container mx-auto px-10 md:pt-4 pt-2 md:flex hidden md:flex-row flex-col">
+                        {/* Avatar - Positioned Independently */}
+                        <div className="relative flex justify-center md:justify-start md:mx-20">
                             <motion.div
-                              key={i}
-                              className="absolute w-1 h-1 bg-white/30 rounded-full"
-                              style={{
-                                left: `${20 + i * 30}%`,
-                                bottom: "20%",
-                              }}
-                              animate={{
-                                y: [-20, -60],
-                                opacity: [0, 1, 0],
-                              }}
-                              transition={{
-                                duration: 2,
-                                repeat: Infinity,
-                                delay: i * 0.6,
-                                ease: "easeOut",
-                              }}
-                            />
-                          ))}
+                                className="
+                                    absolute -top-16 md:-top-20 
+                                    w-24 h-24 md:w-44 md:h-44                                     
+                                    rounded-full overflow-hidden                                     
+                                    md:ring-8 ring-4 ring-amber-300     
+                                    md:ring-offset-4 ring-offset-[#1A1A1A] 
+                                    shadow-[0_0_15px_rgba(251,191,36,0.4)] 
+                                    transition-transform duration-300 ease-in-out hover:scale-[1.03]
+                                    z-10
+                                "
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1.1, opacity: 1 }}
+                                transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                            >
+                                {user.profileURL?.key ? (
+                                    <img
+                                        src={
+                                            user.profileURL?.key
+                                                ? `${CDNURL}${user.profileURL.key}`
+                                                : "/placeholder.svg"
+                                        }
+                                        alt={user.userName ? `${user.userName}'s profile` : "User profile"}
+                                        className="w-full h-full object-cover"
+                                        loading="eager"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-300 to-yellow-400 text-white font-bold text-4xl md:text-5xl">
+                                        {userInitials}
+                                    </div>
+                                )}
+                            </motion.div>
                         </div>
 
-                        {/* Glow effect */}
-                        <motion.div
-                          className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-400 to-pink-400 blur-lg opacity-50"
-                          animate={{
-                            opacity: [0.3, 0.6, 0.3],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                          }}
-                        />
+                        {/* Info Section */}
+                        <div className="flex flex-col justify-start items-center md:items-start w-full md:ml-36 ml-0 mt-10 md:mt-4">
+                            {/* Heading and Bio */}
+                            <div className="text-center md:text-left px-4 w-full">
+                                <div className="flex items-center justify-center md:justify-start">
+                                    <h1 className="md:text-xl text-md font-bold text-white text-nowrap">{user.name}</h1>
+                                    {(isSeller || isDropshipper) && (
+                                        <MdVerified size={24} className="text-blue-400 ml-2" />
+                                    )}
+                                </div>
 
-                        {/* Border animation */}
-                        <motion.div
-                          className="absolute inset-0 rounded-2xl"
-                          style={{
-                            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-                            backgroundSize: "200% 100%",
-                          }}
-                          animate={{
-                            backgroundPosition: ["-200% 0", "200% 0"],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            repeatDelay: 1,
-                          }}
-                        />
-                      </motion.button>
-                    </motion.div>
-                  )}
-                </div>
-              <motion.p className="text-gray-500 text-sm mb-2">
-                @{user.userName}
-              </motion.p>
-              
-              <motion.p
-                className="text-gray-600 max-w-xl mx-auto text-sm sm:text-base whitespace-pre-wrap mb-4"
-              >
-                {user.bio || "No bio available."}
-              </motion.p>
+                                <p className="text-gray-300 max-w-xl mx-auto md:mx-0 mt-2 md:text-sm text-sm line-clamp-2">
+                                    {user.bio || "No bio available"}
+                                </p>
 
-              {/* Action Buttons (Follow/Message) */}
-              <motion.div
-                className="flex flex-wrap justify-center gap-4"
-              >
-                {!isOwnProfile && (
-                  <>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={
-                        localFollowState.followStatus === "Following"
-                          ? handleUnFollowClick
-                          : handleFollowClick
-                      }
-                      className={`btn ${
-                        localFollowState.followStatus === "Following"
-                          ? "btn-outline btn-primary"
-                          : "btn-warning"
-                      } gap-2`} // Adjusted style for following
-                    >
-                      <UserPlus size={18} />
-                      {localFollowState.followStatus}
-                    </motion.button>
-                    <motion.button>
-                      <MessageCircle size={18} /> Message
-                    </motion.button>
-                  </>
-                )}
-              </motion.div>
-            </div>
-            {/* Stats Section */}
-            <motion.div /* ... */ className="flex justify-center mt-6">
-              <div className="stats stats-vertical lg:stats-horizontal shadow bg-base-200">
-                {/* Followers Stat */}
-                <div className="stat">
-                  <button
-                    onClick={() => {
-                      setFollowModalType("followers");
-                      setShowFollowModal(true);
-                    }}
-                    className="stat-figure text-warning cursor-pointer"
-                    aria-label={`View ${localFollowState.followersCount} followers`}
-                  >
-                    {" "}
-                    <Users size={24} />{" "}
-                  </button>
-                  <div className="stat-title">Followers</div>
-                  <div className="stat-value text-2xl">
-                    {localFollowState.followersCount}
-                  </div>
-                </div>
-                {/* Following Stat */}
-                <div className="stat">
-                  <button
-                    onClick={() => {
-                      setFollowModalType("following");
-                      setShowFollowModal(true);
-                    }}
-                    className="stat-figure text-warning cursor-pointer"
-                    aria-label={`View ${followInfo.followingCount} following`}
-                  >
-                    {" "}
-                    <UserPlus size={24} />{" "}
-                  </button>
-                  <div className="stat-title">Following</div>
-                  <div className="stat-value text-2xl">
-                    {followInfo.followingCount}
-                  </div>
-                </div>
-                {/* Products Stat (Seller only) */}
-                {isSeller && (
-                  <div className="stat">
-                    <div className="stat-figure text-warning">
-                      <Package size={24} />
+                                {/* <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
+                                    <div className="flex items-center">
+                                        <span className="text-yellow-400 text-xl mr-1">★</span>
+                                        <span className="font-bold text-gray-50">4.9</span>
+                                    </div>
+                                    <span className="text-gray-400">2.1K reviews</span>
+                                </div> */}
+                            </div>
+
+                            {/* Stats Section */}
+                            <div className="md:grid hidden grid-cols-4 sm:grid-cols-3 md:grid-cols-4 mt-6 w-full md:max-w-xl divide-x divide-gray-700 text-center">
+                                {/* Followers */}
+                                <div className="px-2 sm:px-4 py-4" onClick={() => { setShowFollowModal(true); setFollowModalType("followers") }}>
+                                    <div className="text-sm md:text-2xl font-bold text-white cursor-pointer">
+                                        {localFollowState.followersCount >= 1000
+                                            ? (localFollowState.followersCount / 1000).toFixed(0) + 'K'
+                                            : localFollowState.followersCount}
+                                    </div>
+                                    <div className="text-gray-400 text-xs sm:text-sm">Followers</div>
+                                </div>
+
+                                {/* Following */}
+                                <div className="px-2 sm:px-4 py-4" onClick={() => { setShowFollowModal(true); setFollowModalType("following") }}>
+                                    <div className="text-sm md:text-2xl font-bold text-white cursor-pointer">
+                                        {followInfo.followingCount >= 1000
+                                            ? (followInfo.followingCount / 1000).toFixed(1) + 'K'
+                                            : followInfo.followingCount}
+                                    </div>
+                                    <div className="text-gray-400 text-xs sm:text-sm">Following</div>
+                                </div>
+
+                                {/* Products Sold */}
+                                {/* <div className="px-2 sm:px-4 py-4">
+                                    <div className="text-sm md:text-2xl font-bold text-white">
+                                        {totalProducts >= 1000
+                                            ? (totalProducts / 1000).toFixed(0) + 'K'
+                                            : totalProducts}
+                                    </div>
+                                    <div className="text-gray-400 text-xs sm:text-sm text">Products sold</div>
+                                </div> */}
+
+                                {/* Avg Shipping */}
+                                {/* <div className="px-2 sm:px-4 py-4">
+                                    <div className="text-sm md:text-2xl font-bold text-white">1 Day</div>
+                                    <div className="text-gray-400 text-xs sm:text-sm text-nowrap">Avg shipping</div>
+                                </div> */}
+                            </div>
+
+                            {/* Buttons */}
+                            <div className="md:flex hidden justify-center md:justify-start gap-6 mt-6 px-4 w-full">
+                                {!isOwnProfile ? (
+                                    <>
+                                        {localFollowState.followStatus === 'Following' ? (
+                                            <button
+                                                onClick={handleUnFollowClick}
+                                                className="btn bg-stone-800 hover:bg-stone-700 text-white rounded-2xl px-5 sm:px-8 text-sm sm:text-base h-10 sm:h-12 min-h-10 border-none flex-shrink-0"
+                                            >
+                                                Following
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={handleFollowClick}
+                                                className="btn bg-amber-300 hover:bg-amber-400 text-black font-bold rounded-2xl px-5 sm:px-8 text-sm sm:text-base h-10 sm:h-12 min-h-10 border-none flex-shrink-0"
+                                            >
+                                                Follow
+                                            </button>
+                                        )}
+                                        {/* <button
+                                            // onClick logic for message
+                                            className="btn bg-stone-800 hover:bg-stone-700 text-white rounded-2xl px-5 sm:px-8 text-sm sm:text-base h-10 sm:h-12 min-h-10 border-none flex-shrink-0"
+                                        >
+                                            Message
+                                        </button> */}
+                                    </>
+                                ) : (
+                                    <EditProfileModal />
+                                )}
+
+                                <button
+                                    onClick={handleShare}
+                                    className="btn bg-stone-800 hover:bg-stone-700 text-white rounded-2xl px-5 sm:px-8 text-sm sm:text-base h-10 sm:h-12 min-h-10 border-none flex-shrink-0"
+                                >
+                                    Share
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="stat-title">Products</div>
-                    <div className="stat-value text-2xl">{totalProducts}</div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-            {/* Shipper Application Banner */}
-            {(user.role === "user" || user.role === "dropshipper") &&
-              isOwnProfile && (
-                <div className="mt-6">
-                  <ShipperApplicationBanner />
+
+
+                    {/* Mobile view */}
+                    <div className=" pt-2 md:hidden flex md:flex-row flex-col">
+
+                        <div className="flex">
+                            {/* Avatar - Positioned Independently */}
+                            <div className="relative flex justify-start ">
+                                <motion.div
+                                    className="
+                                        absolute -top-16  
+                                        w-24 h-24 md:w-34 md:h-34                                     
+                                        rounded-full overflow-hidden                                     
+                                        ring-4 ring-amber-300     
+                                        ring-offset-4 ring-offset-[#1A1A1A] 
+                                        shadow-[0_0_15px_rgba(251,191,36,0.4)] 
+                                        transition-transform duration-300 ease-in-out hover:scale-[1.03]
+                                        z-10
+                                    "
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1.1, opacity: 1 }}
+                                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                                >
+                                    {user.profileURL?.key ? (
+                                        <img
+                                            src={
+                                                user.profileURL?.key
+                                                    ? `${CDNURL}${user.profileURL.key}`
+                                                    : "/placeholder.svg"
+                                            }
+                                            alt={user.userName ? `${user.userName}'s profile` : "User profile"}
+                                            className="w-full h-full object-cover"
+                                            loading="eager"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-300 to-yellow-400 text-white font-bold text-4xl md:text-5xl">
+                                            {userInitials}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            </div>
+
+                            {/* Heading and Bio */}
+                            <div className="text-left px-4 w-full ml-28">
+                                <div className="flex items-center justify-start">
+                                    <h1 className="md:text-3xl text-md font-bold text-white text-left text-nowrap">{user.name}</h1>
+                                    {(isSeller || isDropshipper) && (
+                                        <MdVerified size={20} className="text-blue-400 ml-2" />
+                                    )}
+                                </div>
+
+                                <p className="text-gray-300 max-w-xl mx-auto md:mx-0 mt-2 text-xs line-clamp-2">
+                                    {user.bio || "No bio available"}
+                                </p>
+
+                                {/* <div className="flex items-center justify-start gap-2 my-3">
+                                    <div className="flex items-center bg-stone-600 rounded-full px-4">
+                                        <span className="text-yellow-400 text-sm mr-1">★</span>
+                                        <span className="font-bold text-gray-50 text-sm ">4.9</span>
+                                    </div>
+                                    <span className="text-gray-100 text-xs">2.1K reviews</span>
+                                </div> */}
+                            </div>
+                        </div>
+
+                        {/* Info Section */}
+                        <div className="flex flex-col justify-start items-center md:items-start w-full">
+
+                            {/* Stats Section */}
+                            <div className="grid grid-cols-4 md:grid-cols-4 mt-6 w-full md:max-w-xl divide-x divide-gray-700 text-center">
+                                {/* Followers */}
+                                <div className="" onClick={() => { setShowFollowModal(true); setFollowModalType("followers") }}>
+                                    <div className="text-sm md:text-2xl font-bold text-white cursor-pointer">
+                                        {localFollowState.followersCount >= 1000
+                                            ? (localFollowState.followersCount / 1000).toFixed(0) + 'K'
+                                            : localFollowState.followersCount}
+                                    </div>
+                                    <div className="text-gray-100 text-[10px]">Followers</div>
+                                </div>
+
+                                {/* Following */}
+                                <div className="" onClick={() => { setShowFollowModal(true); setFollowModalType("following") }}>
+                                    <div className="text-sm md:text-2xl font-bold text-white cursor-pointer">
+                                        {followInfo.followingCount >= 1000
+                                            ? (followInfo.followingCount / 1000).toFixed(1) + 'K'
+                                            : followInfo.followingCount}
+                                    </div>
+                                    <div className="text-gray-100 text-[10px] ">Following</div>
+                                </div>
+
+                                {/* Products Sold */}
+                                {/* <div className="">
+                                    <div className="text-sm md:text-2xl font-bold text-white">
+                                        {totalProducts >= 1000
+                                            ? (totalProducts / 1000).toFixed(0) + 'K'
+                                            : totalProducts}
+                                    </div>
+                                    <div className="text-gray-100 text-[10px]  whitespace-nowrap">Products sold</div>
+                                </div> */}
+
+                                {/* Avg Shipping */}
+                                {/* <div className="">
+                                    <div className="text-sm md:text-2xl font-bold text-white">1 Day</div>
+                                    <div className="text-gray-100 text-[10px]  whitespace-nowrap">Avg shipping</div>
+                                </div> */}
+                            </div>
+
+                            {/* Buttons */}
+                            <div className="flex justify-center md:justify-start gap-4 mt-6 px-4 w-full">
+                                {!isOwnProfile ? (
+                                    <>
+                                        {localFollowState.followStatus === 'Following' ? (
+                                            <button
+                                                onClick={handleUnFollowClick}
+                                                className="bg-stone-900 hover:bg-stone-700 btn border-white border-1 text-white rounded-full px-5 text-xs h-8 min-h-8 flex-shrink-0"
+                                            >
+                                                Following
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={handleFollowClick}
+                                                className="bg-yellow-300 hover:bg-amber-400 text-black font-bold rounded-full px-5 text-xs h-8  min-h-8 border-none flex-shrink-0"
+                                            >
+                                                Follow
+                                            </button>
+                                        )}
+                                        <button
+                                            className="bg-stone-900 hover:bg-stone-700 btn border-white border-1 text-white rounded-full px-5 text-xs h-8 min-h-8 flex-shrink-0"
+                                        >
+                                            Message
+                                        </button>
+                                    </>
+                                ) : (
+                                    <EditProfileModal />
+                                )}
+
+
+                                <button
+                                    onClick={handleShare}
+                                    className="bg-stone-900 hover:bg-stone-700 btn border-white  text-white rounded-full px-5 text-xs h-8 min-h-8 flex-shrink-0"
+                                >
+                                    Share
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+
+
                 </div>
-              )}
-          </div>
 
-          {/* Tabs Section */}
-          {visibleTabs.length > 0 && (
-            <div className="border-t border-base-200">
-              <div className="tabs tabs-boxed bg-base-200 justify-center p-2 rounded-none overflow-x-auto whitespace-nowrap">
-                {visibleTabs.map((tab) => {
-                  const Icon = tab.icon;
-                  return (
-                    <motion.button
-                      key={tab.id + "-" + tab.role} // Use role in key if IDs overlap
-                      className={`tab gap-2 ${
-                        activeTab === tab.id
-                          ? "tab-active bg-warning text-black"
-                          : ""
-                      }`}
-                      onClick={() => setActiveTab(tab.id)}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      <Icon size={16} /> {tab.label}
-                    </motion.button>
-                  );
-                })}
-              </div>
+                {visibleTabs.length > 0 && (
+                    <div className="flex justify-center md:mt-4 mt-2 border-b border-gray-800 w-full">
+                        <div className="flex w-full">
+                            {visibleTabs.map((tab) => {
+                                const Icon = tab.icon;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex flex-1 items-center justify-center py-4 px-4 sm:px-6 ${activeTab === tab.id
+                                            ? "border-b-2 border-yellow-400 text-yellow-400"
+                                            : "text-gray-400"
+                                            }`}
+                                    >
+                                        <Icon size={20} className="mr-2" />
+
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+
+                {/* Content Area */}
+                <div className="md:mt-8">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3 }}
+                            className="min-h-[300px]"
+                        >
+                            {activeTab === "shop" && isSeller && (
+                                <ProductsFeed
+                                    totalProducts={totalProducts}
+                                    products={products}
+                                    sellerInfo={sellerInfo}
+                                    userInfo={user}
+                                />
+                            )}
+
+                            {activeTab === "videos" && (isSeller || isDropshipper) && (
+                                <ShoppableVideosFeed
+                                    totalShoppableVideos={totalShoppableVideos}
+                                    shoppableVideos={shoppableVideos}
+                                    sellerInfo={sellerInfo}
+                                    userInfo={user}
+                                />
+                            )}
+
+                            {activeTab === "shows" && (isSeller || isDropshipper) && (
+                                <ShowsFeed
+                                    totalShows={totalShows}
+                                    shows={shows}
+                                    sellerInfo={sellerInfo}
+                                    userInfo={user}
+                                />
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
+
+                {/* Follow Modal */}
+                <AnimatePresence>
+                    {showFollowModal && (
+                        <FollowModal
+                            userId={profileData.user._id}
+                            initialTab={followModalType}
+                            onClose={() => setShowFollowModal(false)}
+                        />
+                    )}
+                </AnimatePresence>
+
             </div>
-          )}
+        </div >
+    )
+}
 
-          {/* Tab Content */}
-          <div className="p-4 sm:p-6">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab} // Animate based on active tab
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }} // Faster transition
-                className="min-h-[300px]" // Ensure content area has min height
-              >
-                {renderTabContent()}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Follow Modal */}
-      <AnimatePresence>
-        {showFollowModal &&
-          profileData?.user?._id && ( // Ensure userId is available
-            <FollowModal
-              userId={profileData.user._id}
-              initialTab={followModalType}
-              onClose={() => setShowFollowModal(false)}
-            />
-          )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-export default UserProfile;
+export default UserProfile

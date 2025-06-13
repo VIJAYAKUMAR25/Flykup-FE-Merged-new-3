@@ -332,7 +332,7 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
               </button>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-1">
               {/* Auction Type Toggle */}
               <div className="bg-stone-800 p-3 rounded-xl">
                 <label className="flex items-center justify-between cursor-pointer">
@@ -427,8 +427,8 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
               <div className="bg-stone-800 p-1 flex flex-col rounded-xl">
                 <div className="flex gap-1">
                   {/* Starting Bid Input */}
-                  <div className="bg-stone-800 p-3 rounded-xl">
-                    <label className="block mb-2 text-sm font-medium text-white">Starting Bid (₹)</label>
+                  <div className="bg-stone-800 p-1 rounded-xl">
+                    <label className="block mb-1 text-sm font-medium text-white">Starting Bid (₹)</label>
                     <div className="relative">
                       <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400 w-4 h-4" />
                       <input
@@ -441,7 +441,7 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
                   </div>
 
                   {/* Reserved price Input */}
-                  <div className="bg-stone-800 p-3 rounded-xl">
+                  <div className="bg-stone-800 p-1 rounded-xl">
                     <label className="block mb-2 text-sm font-medium text-white">Reserved Price (₹)</label>
                     <div className="relative">
                       <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400 w-4 h-4" />

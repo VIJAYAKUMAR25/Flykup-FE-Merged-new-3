@@ -89,6 +89,16 @@ const StreamPreviewModal = ({
   const getDevices = async () => {
     try {
       addLog('Enumerating media devices...');
+      
+      // Request permission first to get device labels
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        tempStream.getTracks().forEach(track => track.stop()); // Stop immediately
+        addLog('Temporary permission granted for device enumeration');
+      } catch (permError) {
+        addLog('Could not get temporary permission for device labels', 'warn');
+      }
+      
       const deviceList = await navigator.mediaDevices.enumerateDevices();
       
       const cameras = deviceList.filter(device => device.kind === 'videoinput');
@@ -97,22 +107,45 @@ const StreamPreviewModal = ({
       
       setDevices({ cameras, microphones, speakers });
       
-      // Auto-select first available devices
-      if (cameras.length > 0 && !selectedDevices.camera) {
-        setSelectedDevices(prev => ({ ...prev, camera: cameras[0].deviceId }));
-      }
-      if (microphones.length > 0 && !selectedDevices.microphone) {
-        setSelectedDevices(prev => ({ ...prev, microphone: microphones[0].deviceId }));
-      }
-      if (speakers.length > 0 && !selectedDevices.speaker) {
-        setSelectedDevices(prev => ({ ...prev, speaker: speakers[0].deviceId }));
-      }
+      // Auto-select first available devices if none selected
+      setSelectedDevices(prev => ({
+        camera: prev.camera || (cameras.length > 0 ? cameras[0].deviceId : null),
+        microphone: prev.microphone || (microphones.length > 0 ? microphones[0].deviceId : null),
+        speaker: prev.speaker || (speakers.length > 0 ? speakers[0].deviceId : null)
+      }));
       
       addLog(`Found ${cameras.length} cameras, ${microphones.length} microphones, ${speakers.length} speakers`);
       
     } catch (error) {
       addLog(`Error enumerating devices: ${error.message}`, 'error');
       setErrors(prev => ({ ...prev, devices: error.message }));
+      
+      // Fallback: try to get default devices
+      try {
+        const defaultStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const videoTrack = defaultStream.getVideoTracks()[0];
+        const audioTrack = defaultStream.getAudioTracks()[0];
+        
+        // Create mock device entries for default devices
+        const mockDevices = {
+          cameras: videoTrack ? [{ deviceId: 'default', label: 'Default Camera' }] : [],
+          microphones: audioTrack ? [{ deviceId: 'default', label: 'Default Microphone' }] : [],
+          speakers: [{ deviceId: 'default', label: 'Default Speaker' }]
+        };
+        
+        setDevices(mockDevices);
+        setSelectedDevices({
+          camera: videoTrack ? 'default' : null,
+          microphone: audioTrack ? 'default' : null,
+          speaker: 'default'
+        });
+        
+        defaultStream.getTracks().forEach(track => track.stop());
+        addLog('Using default devices as fallback');
+        
+      } catch (fallbackError) {
+        addLog(`Fallback device detection failed: ${fallbackError.message}`, 'error');
+      }
     }
   };
   
@@ -139,16 +172,26 @@ const StreamPreviewModal = ({
     try {
       addLog('Requesting user media access...');
       
+      // Ensure at least one media type is requested
+      const hasCamera = selectedDevices.camera && devices.cameras.length > 0;
+      const hasMicrophone = selectedDevices.microphone && devices.microphones.length > 0;
+      
+      if (!hasCamera && !hasMicrophone) {
+        throw new Error('No camera or microphone selected. Please select at least one device.');
+      }
+      
       const constraints = {
-        video: selectedDevices.camera ? {
-          deviceId: { exact: selectedDevices.camera },
+        video: hasCamera ? {
+          deviceId: selectedDevices.camera ? { exact: selectedDevices.camera } : undefined,
           ...videoQualityPresets[videoQuality]
         } : false,
-        audio: selectedDevices.microphone ? {
-          deviceId: { exact: selectedDevices.microphone },
+        audio: hasMicrophone ? {
+          deviceId: selectedDevices.microphone ? { exact: selectedDevices.microphone } : undefined,
           ...audioQualityPresets[audioQuality]
         } : false
       };
+      
+      addLog(`Requesting media with constraints: ${JSON.stringify(constraints)}`);
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
@@ -547,6 +590,9 @@ const StreamPreviewModal = ({
                           </option>
                         ))}
                       </select>
+                      {devices.cameras.length === 0 && (
+                        <p className="text-yellow-400 text-xs mt-1">⚠️ No cameras detected</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Microphone</label>
@@ -562,7 +608,19 @@ const StreamPreviewModal = ({
                           </option>
                         ))}
                       </select>
+                      {devices.microphones.length === 0 && (
+                        <p className="text-yellow-400 text-xs mt-1">⚠️ No microphones detected</p>
+                      )}
                     </div>
+                    
+                    {/* Device Status Info */}
+                    {(!selectedDevices.camera && !selectedDevices.microphone) && (
+                      <div className="bg-yellow-900 border border-yellow-700 p-3 rounded-md">
+                        <p className="text-yellow-300 text-sm">
+                          ⚠️ Please select at least one device (camera or microphone) to start the preview.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -656,11 +714,15 @@ const StreamPreviewModal = ({
             <div className="flex justify-center space-x-4">
               <button
                 onClick={isPreviewActive ? stopStreams : requestUserMedia}
+                disabled={!isPreviewActive && !selectedDevices.camera && !selectedDevices.microphone}
                 className={`px-6 py-3 rounded-lg font-medium transition ${
                   isPreviewActive 
                     ? 'bg-red-600 hover:bg-red-700 text-white' 
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : (!selectedDevices.camera && !selectedDevices.microphone)
+                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
+                title={(!selectedDevices.camera && !selectedDevices.microphone) ? 'Please select at least one device' : ''}
               >
                 {isPreviewActive ? 'Stop Preview' : 'Start Preview'}
               </button>
@@ -669,6 +731,7 @@ const StreamPreviewModal = ({
                 onClick={handleStartStream}
                 disabled={!isPreviewActive || isStarting}
                 className="px-8 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition"
+                title={!isPreviewActive ? 'Please start preview first' : ''}
               >
                 {isStarting ? 'Starting Stream...' : 'Start Stream'}
               </button>

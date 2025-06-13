@@ -733,10 +733,10 @@ const ShowDetailsSeller = () => {
                                                                         toast.error("Socket not connected. Please refresh.");
                                                                     }
                                                                 }}
-                                                                    className={`w-full py-2 rounded-lg font-semibold transition-colors ${anyGiveawayActive || !socket ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
+                                                                    className={`w-full py-2 text-sm rounded-lg font-semibold transition-colors ${anyGiveawayActive || !socket ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
                                                                     disabled={anyGiveawayActive || !socket}
                                                                 >
-                                                                    {anyGiveawayActive ? 'Another Giveaway Active' : 'Start This Giveaway'}
+                                                                    {anyGiveawayActive ? 'Another Giveaway Active' : 'Start Giveaway'}
                                                                 </button>
                                                             </div>
                                                         );

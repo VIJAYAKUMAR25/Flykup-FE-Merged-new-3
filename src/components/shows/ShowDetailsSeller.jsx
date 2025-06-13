@@ -844,42 +844,85 @@ const ShowDetailsSeller = () => {
                     </div>
 
                     {/* Overlay Chat/Comments */}
-                    {/* <div className="absolute bottom-5 left-1 right-16 text-white flex flex-col">
-                        <LiveComments streamId={showId} prevComments={show?.comments} socket={socket} />
-                    </div> */}
+                    <div className="absolute bottom-5 left-1 right-16 text-white flex flex-col lg:hidden lg:flex">
+                        <LiveComments streamId={showId} prevComments={show?.comments} />
+                    </div>
                 </div>
             </div>
 
             {/* Right Sidebar - Chat and Stream Controls (Simplified) */}
             <div className="w-[25%] hidden lg:flex flex-col justify-between border-l border-stone-800 min-h-screen bg-stone-950">
-                {/* Stream Controls - Now handled by StartStream, but you might want to show some info here */}
-                <div className="p-6 border-b border-stone-800 text-center flex flex-col gap-4">
-                    <h3 className="text-xl font-bold text-white">Stream Status</h3>
-                    <div className="flex justify-between items-center mt-2 p-3 bg-stone-900 rounded-lg border border-stone-800">
-                        <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-yellow-500" />
-                            <span className="font-mono">{formatTime(streamTime)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-yellow-500" />
-                            <span>{viewerCount || 0}</span>
+                {/* Stream Controls */}
+                {/* <div className="p-6 border-b border-stone-800 text-center flex flex-col gap-4">
+                    <h3 className="text-xl font-bold text-white">Stream Controls</h3>
+
+                    <div className="flex flex-col gap-3">
+                        {!isStreaming ? (
+                            <button
+                                onClick={startStreaming}
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-yellow-500 text-stone-900 rounded-xl font-medium hover:bg-yellow-400 transition-colors shadow-lg"
+                            >
+                                <Video className="h-5 w-5" />
+                                Start Live Stream
+                            </button>
+                        ) : (
+                            <button
+                                onClick={stopStreaming}
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors shadow-lg"
+                            >
+                                <X className="h-5 w-5" />
+                                End Live Stream
+                            </button>
+                        )}
+
+                        <div className="flex justify-center gap-4 mt-2">
+                            <button
+                                onClick={toggleCamera}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg ${isCameraEnabled ? "bg-stone-800 text-white" : "bg-red-500/20 text-red-500 border border-red-500/30"}`}
+                            >
+                                {isCameraEnabled ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />}
+                                {isCameraEnabled ? "Camera On" : "Camera Off"}
+                            </button>
+
+                            <button
+                                onClick={toggleMic}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg ${isMicEnabled ? "bg-stone-800 text-white" : "bg-red-500/20 text-red-500 border border-red-500/30"}`}
+                            >
+                                {isMicEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                                {isMicEnabled ? "Mic On" : "Mic Off"}
+                            </button>
                         </div>
                     </div>
 
+                    {isStreaming && (
+                        <div className="flex justify-between items-center mt-2 p-3 bg-stone-900 rounded-lg border border-stone-800">
+                            <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-yellow-500" />
+                                <span className="font-mono">{formatTime(streamTime)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4 text-yellow-500" />
+                                <span>{viewerCount || 0}</span>
+                            </div>
+                        </div>
+                    )}
+                </div> */}
+
+             <div className="flex-1 flex flex-col justify-between text-white">
+                <div className="p-4 border-b border-stone-800 flex items-center justify-between">
+                    <h3 className="font-semibold text-lg">Live Chat</h3>
+                    <MessageCircle className="h-5 w-5 text-yellow-500" />
                 </div>
 
-                <div className="flex-1 flex flex-col text-white">
-                    <div className="p-4 border-b border-stone-800 flex items-center justify-between">
-                        <h3 className="font-semibold text-lg">Live Chat</h3>
-                        <MessageCircle className="h-5 w-5 text-yellow-500" />
-                    </div>
+                <div className="mt-auto ">
                     <LiveComments
-                        streamId={showId}
-                        prevComments={show?.comments}
-                        height={show?.comments?.length > 10 ? "70vh" : "32vh"}
-                        socket={socket}
+                    streamId={showId}
+                    prevComments={show?.comments}
+                    height={show?.comments?.length > 10 ? "90vh" : "92vh"}
                     />
                 </div>
+                </div>
+
             </div>
 
             {/* Exit Confirmation Modal */}

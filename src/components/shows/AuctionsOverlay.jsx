@@ -16,6 +16,9 @@ const socket = io.connect(socketurl, {
 
 
 const AuctionsOverlay = ({ streamId, show, currentAuction }) => {
+    console.log("🚀 currentAuction:", currentAuction);
+    console.log("🚀 streamId:", streamId);
+    console.log("🚀 show:", show);
     const countdownRef = useRef(null); // Store interval reference
     const [isActive, setIsActive] = useState(currentAuction?.isActive || false);
     const [isAuctionStarted, setIsAuctionStarted] = useState(false);

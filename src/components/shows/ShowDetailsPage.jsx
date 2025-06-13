@@ -21,6 +21,7 @@ import { View, Director } from "@millicast/sdk"; // Only if using Millicast dire
 import { useAuth } from "../../context/AuthContext";
 import { AiOutlineShop } from "react-icons/ai";
 import ViewLiveStream from "../reuse/LiveStream/ViewLiveStream"; // Assuming this handles Millicast integration
+import { BiNotepad } from "react-icons/bi";
 
 const ShowDetailsPage = () => {
     const { user, logout } = useAuth();
@@ -799,131 +800,145 @@ return(
                         )}
                     </AnimatePresence>
 
-                    <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col space-y-2 z-30">
-                        {/* Top row: Chat/Comments and Floating Action Buttons */}
-                        <div className="flex flex-row justify-between items-end">
-                            {/* Overlay Chat/Comments */}
-                            <div
-                                className="flex-1 text-white"
-                                style={{
-                                    WebkitMaskImage:
-                                        "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 100%)",
-                                    maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 100%)",
-                                }}
-                            >
-                                <LiveComments streamId={id} prevComments={show?.comments} socket={socket} />
-                            </div>
+                    <div className="absolute bottom-6 left-0 right-0 p-3 flex flex-col space-y-3 z-30 mb-4">
+        <div className="flex flex-row justify-between items-end gap-4">
+          <div
+            className="flex-1 text-white max-w-[calc(100%-80px)] md:max-w-[calc(100%-100px)]"
+            style={{
+              WebkitMaskImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 100%)",
+              maskImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 100%)",
+            }}
+          >
+            <div className="block md:block lg:hidden">
+              <LiveComments
+                streamId={id}
+                prevComments={show?.comments}
+                socket={socket}
+              />
+            </div>
+          </div>
 
-                            {/* Floating Action Buttons */}
-                            <div className="flex flex-col space-y-3 mt-4 mx-2">
-                                <LikeButton
-                                    initialLikes={likes}
-                                    onLike={handleLike}
-                                    isLiked={liked}
-                                    setIsLiked={setLiked}
-                                    setLikes={setLikes}
-                                    connectionReady={!!socket}
-                                />
+          {/* Floating Action Buttons */}
+          <div className="flex flex-col space-y-2 items-center flex-shrink-0">
+            <LikeButton
+              initialLikes={likes}
+              onLike={handleLike}
+              isLiked={liked}
+              setIsLiked={setLiked}
+              setLikes={setLikes}
+              connectionReady={!!socket}
+            />
 
-                                <button
-                                    onClick={() => setIsNotesModalOpen(true)}
-                                    className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700 transition-colors shadow-lg"
-                                >
-                                     {/* <BiNotepad className="h-5 w-5" /> */}
-                                   Notes
-                                </button>
+            <button
+              onClick={() => setIsNotesModalOpen(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <BiNotepad className="h-5 w-5" /> 
+            </button>
 
-                                {/* Notes Modal */}
-                                <AnimatePresence>
-                                    {isNotesModalOpen && (
-                                        <motion.div
-                                            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                        >
-                                            <motion.div
-                                                className="bg-stone-900 rounded-2xl shadow-xl p-6 max-w-md w-full relative border border-stone-700"
-                                                initial={{ scale: 0.8 }}
-                                                animate={{ scale: 1 }}
-                                                exit={{ scale: 0.8 }}
-                                            >
-                                                {/* Close button in top right */}
-                                                <button
-                                                    onClick={() => setIsNotesModalOpen(false)}
-                                                    className="absolute top-4 right-4 text-stone-400 hover:text-stone-200 transition-colors"
-                                                    aria-label="Close"
-                                                >
-                                                    <MdClose size={20} />
-                                                </button>
+            {/* Notes Modal */}
+            <AnimatePresence>
+              {isNotesModalOpen && (
+                <motion.div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsNotesModalOpen(false)}
+                >
+                  <motion.div
+                    className="bg-stone-900 rounded-2xl shadow-2xl p-6 max-w-md w-full relative border border-stone-700/50"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Close button in top right */}
+                    <button
+                      onClick={() => setIsNotesModalOpen(false)}
+                      className="absolute top-4 right-4 text-stone-400 hover:text-stone-200 transition-colors rounded-full p-1 hover:bg-stone-800"
+                      aria-label="Close"
+                    >
+                      <MdClose size={20} />
+                    </button>
 
-                                                <h2 className="text-2xl font-bold mb-6 text-white">Notes</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-white pr-8">
+                      Notes
+                    </h2>
 
-                                                <div className="bg-stone-800 p-5 rounded-xl border border-stone-700">
-                                                    <p className="text-yellow-500 font-medium flex items-center gap-2">
-                                                        <span className="text-xl">⚠️</span> No returns for any products in Auction
-                                                    </p>
-                                                </div>
-                                            </motion.div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-
-                                <button
-                                    onClick={handleShare}
-                                    className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700 transition-colors shadow-lg"
-                                >
-                                    <FiShare className="h-5 w-5" />
-                                </button>
-
-                                <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700 transition-colors shadow-lg">
-                                    <Volume2 className="h-5 w-5" />
-                                </button>
-
-                                <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700 transition-colors shadow-lg">
-                                    <LucideWallet className="h-5 w-5" />
-                                </button>
-
-                                {/* Mobile Toggle Button for Auction Details */}
-                                <button
-                                    onClick={() => setShowMobileSidebar(true)}
-                                    className="relative lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 text-stone-900 hover:bg-yellow-600 transition-colors shadow-lg"
-                                >
-                                    <AiOutlineShop className="w-5 h-5" />
-                                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white border-2 border-stone-900">
-                                        {(show?.auctionProducts?.length || 0) +
-                                            (show?.buyNowProducts?.length || 0) +
-                                            (show?.giveawayProducts?.length || 0)}
-                                    </span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Bottom row: Auction Overlay */}
-                        <AnimatePresence>
-                            {auctionActive && currentAuction ? (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: 20 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="w-full text-white flex flex-col p-4 rounded-xl backdrop-blur-sm  shadow-lg"
-                                >
-                                    <AuctionsOverlay streamId={id} show={show} currentAuction={show?.currentAuction} socket={socket}/>
-                                </motion.div>
-                            ) : (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: 20 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="w-full text-white flex flex-col p-2 rounded-xl"
-                                >
-                                    <h3 className="text-md font-bold">{/* {show?.title} */}</h3>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                    <div className="bg-stone-800/60 p-5 rounded-xl border border-stone-700/40 backdrop-blur-sm">
+                      <p className="text-yellow-400 font-medium flex items-center gap-3">
+                        <span className="text-xl flex-shrink-0">⚠️</span> 
+                        <span>No returns for any products in Auction</span>
+                      </p>
                     </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <button
+              onClick={handleShare}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <FiShare className="h-5 w-5" />
+            </button>
+
+            <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+              <Volume2 className="h-5 w-5" />
+            </button>
+
+            <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+              <LucideWallet className="h-5 w-5" />
+            </button>
+
+            {/* Mobile Toggle Button for Auction Details */}
+            <button
+              onClick={() => setShowMobileSidebar(true)}
+              className="relative lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 text-stone-900 hover:bg-yellow-500 active:bg-yellow-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <AiOutlineShop className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white border-2 border-stone-900 shadow-md">
+                {(show?.auctionProducts?.length || 0) +
+                  (show?.buyNowProducts?.length || 0) +
+                  (show?.giveawayProducts?.length || 0)}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom row: Auction Overlay */}
+        <AnimatePresence>
+          {auctionActive && currentAuction ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="w-full text-white flex flex-col p-4 rounded-xl backdrop-blur-sm shadow-lg bg-stone-900/20 border border-stone-700/20"
+            >
+              <AuctionsOverlay
+                streamId={id}
+                show={show}
+                currentAuction={show?.currentAuction}
+                socket={socket}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="w-full text-white flex flex-col p-2 rounded-xl"
+            >
+              <h3 className="text-md font-bold">{/* {show?.title} */}</h3>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
                 </div>
 
                 <div className="absolute bottom-0 left-0 right-0 h-1/4 z-10">
@@ -932,16 +947,16 @@ return(
             </div>
 
             {/* Right Sidebar - Chat */}
-            <div className="md:w-[25%] border-l border-stone-800 min-h-screen hidden lg:flex flex-col justify-between bg-stone-950">
+           <div className="md:w-[25%] border-l border-stone-800 min-h-screen hidden lg:flex flex-col justify-between bg-stone-950">
                 <div className="p-4 border-b border-stone-800 flex items-center justify-between">
-                    <h3 className="font-semibold text-lg">Live Chat</h3>
-                    <MessageCircle className="h-5 w-5 text-yellow-500" />
+                <h3 className="font-semibold text-lg">Live Chat</h3>
+                <MessageCircle className="h-5 w-5 text-yellow-500" />
                 </div>
                 <LiveComments
-                    streamId={id}
-                    prevComments={show?.comments}
-                    height={show?.comments?.length > 10 ? "77vh" : "36vh"}
-                    socket={socket}
+                streamId={id}
+                prevComments={show?.comments}
+                height={show?.comments?.length > 10 ? "90vh" : "90vh"}
+                socket={socket}
                 />
             </div>
         </div>

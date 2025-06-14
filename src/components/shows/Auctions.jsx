@@ -413,7 +413,7 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
                   <select
                     value={increment}
                     onChange={(e) => setIncrement(Number(e.target.value))}
-                    className="w-full bg-stone-700 border border-stone-600 text-white rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500"
+                    className="w-full bg-stone-700 border border-stone-600 text-white rounded-lg p-1.5 focus:ring-amber-500 focus:border-amber-500"
                   >
                     <option value={2}>2 seconds</option>
                     <option value={5}>5 seconds</option>
@@ -435,7 +435,7 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
                         type="number"
                         value={startingBid}
                         onChange={(e) => setStartingBid(e.target.value)}
-                        className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500"
+                        className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-1.5 focus:ring-amber-500 focus:border-amber-500"
                       />
                     </div>
                   </div>
@@ -449,13 +449,13 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
                         type="number"
                         value={reservedPrice}
                         onChange={(e) => setReservedPrice(e.target.value)}
-                        className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500"
+                        className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-1.5 focus:ring-amber-500 focus:border-amber-500"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="p-3">
+                <div className="p-1">
                   {/* ----- Validation Error Display ----- */}
                   {bidReserveError && (
                     <p className="text-red-500 text-xs flex items-center gap-1">
@@ -467,15 +467,15 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
               </div>
 
               {/* Auction Time Input */}
-              <div className="bg-stone-800 p-3 rounded-xl">
-                <label className="block mb-2 text-sm font-medium text-white">Auction Time (seconds)</label>
+              <div className="bg-stone-800 p-1 rounded-xl">
+                <label className="block mb-1 text-sm font-medium text-white">Auction Time (seconds)</label>
                 <div className="relative">
                   <Timer className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400 w-4 h-4" />
                   <input
                     type="number"
                     value={customTime}
                     onChange={handleSetTimer}
-                    className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-2.5 focus:ring-amber-500 focus:border-amber-500 rounded-full"
+                    className="w-full pl-10 bg-stone-700 border border-stone-600 text-white rounded-lg p-1.5 focus:ring-amber-500 focus:border-amber-500 rounded-full"
                   />
                 </div>
               </div>
@@ -483,7 +483,7 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
 
 
               {/* Action Buttons */}
-              <div className="flex justify-center gap-4 pt-2">
+              <div className="flex justify-center gap-4 ">
                 <button
                   onClick={confirmStartAuction}
                   disabled={

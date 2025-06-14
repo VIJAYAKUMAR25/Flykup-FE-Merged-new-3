@@ -15,7 +15,15 @@ const truncateText = (text = "", maxLength) => {
   return text.slice(0, maxLength) + "..."
 }
 
+const getFullImageUrl = (imagePath) => {
+  if (!imagePath) return "/placeholder.svg"
+  if (imagePath.startsWith('http')) return imagePath
+  const cdnUrl = import.meta.env.VITE_AWS_CDN_URL || "https://d2jp9e7w3mhbvf.cloudfront.net/"
+  return `${cdnUrl}${imagePath}`
+}
 const ProfileAvatar = ({ profileURL, username, onClick }) => {
+  const fullProfileUrl = getFullImageUrl(profileURL)
+  
   return (
     <div
       onClick={onClick}
@@ -23,7 +31,7 @@ const ProfileAvatar = ({ profileURL, username, onClick }) => {
     >
       {profileURL ? (
         <img
-          src={profileURL || "/placeholder.svg"}
+          src={fullProfileUrl}
           alt={username || "User"}
           className="w-full h-full object-cover"
           onError={(e) => {
@@ -57,6 +65,7 @@ const ShowCard = ({ show, index }) => {
   const navigate = useNavigate()
   const viewerCount = useMemo(() => Math.floor(Math.random() * 200) + 50, [])
   const isLive = show.showStatus === "live" || show.isLive
+  const fullThumbnailUrl = getFullImageUrl(show.thumbnailImage)
 
   const handleProfileClick = (e) => {
     e.stopPropagation()
@@ -93,7 +102,7 @@ const ShowCard = ({ show, index }) => {
 
       <div className="aspect-[9/12] bg-gray-100 relative overflow-hidden group">
         <img
-          src={show.thumbnailImageURL || "/placeholder.svg?height=400&width=300"}
+          src={fullThumbnailUrl}
           alt={show.title || "Show thumbnail"}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           onError={(e) => {

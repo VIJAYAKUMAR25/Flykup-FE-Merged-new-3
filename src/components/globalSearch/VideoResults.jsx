@@ -19,17 +19,53 @@ const truncateText = (text = '', maxLength) => { // Added default empty string
   return text.slice(0, maxLength) + '...';
 };
 
+// Helper function to generate CDN URL
+const generateCDNUrl = (imagePath) => {
+  if (!imagePath) return null;
+  
+  // If it's already a full URL (starts with http), return as is
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  
+  // Get CDN URL from environment variable
+  const cdnBaseUrl = import.meta.env.VITE_AWS_CDN_URL;
+  
+  if (!cdnBaseUrl) {
+    console.warn('VITE_AWS_CDN_URL not found in environment variables');
+    return imagePath; // Return original path as fallback
+  }
+  
+  // Remove leading slash from imagePath if present to avoid double slashes
+  const cleanImagePath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+  
+  // Ensure CDN URL doesn't end with slash to avoid double slashes
+  const cleanCdnUrl = cdnBaseUrl.endsWith('/') ? cdnBaseUrl.slice(0, -1) : cdnBaseUrl;
+  
+  return `${cleanCdnUrl}/${cleanImagePath}`;
+};
+
+// Helper function to get the best available thumbnail URL
+const getThumbnailUrl = (video) => {
+  // Priority: thumbnailURL first, then thumbnailBlobName, then null
+  const thumbnailPath = video.thumbnailURL || video.thumbnailBlobName;
+  return generateCDNUrl(thumbnailPath);
+};
+
 // --- Reusable Profile Avatar (can be imported from a shared file) ---
 const ProfileAvatar = ({ profileURL, username, onClick }) => {
+  // Generate CDN URL for profile image - THIS IS THE KEY CHANGE
+  const cdnProfileURL = generateCDNUrl(profileURL);
+  
   return (
     <div
       onClick={onClick}
       // Applied styles directly for simplicity, consider abstracting if used elsewhere extensively
        className="cursor-pointer border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center w-8 h-8 z-40" // Added z-index from original
     >
-      {profileURL ? (
+      {cdnProfileURL ? (
         <img
-          src={profileURL}
+          src={cdnProfileURL}
           alt={username || "User"}
           className="w-full h-full object-cover border border-gray-200 group-hover:border-blue-400 transition-colors" // Ensure parent group hover works if needed
           onError={(e) => {
@@ -78,6 +114,9 @@ const VideoCard = ({ video, index }) => {
      }
   };
 
+  // Generate CDN URL for thumbnail - check both thumbnailURL and thumbnailBlobName
+  const cdnThumbnailURL = getThumbnailUrl(video);
+
   return (
     <motion.div
       className="rounded-xl overflow-hidden bg-white border border-gray-100 shadow-sm cursor-pointer group"
@@ -92,7 +131,7 @@ const VideoCard = ({ video, index }) => {
       <div className="aspect-[9/12] bg-gray-100 relative overflow-hidden">
         {/* Image */}
         <img
-          src={video.thumbnailURL || PLACEHOLDER_IMAGE}
+          src={cdnThumbnailURL || PLACEHOLDER_IMAGE}
           alt={video.title || 'Video thumbnail'}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={(e) => { e.target.src = PLACEHOLDER_IMAGE }}

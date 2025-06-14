@@ -5,6 +5,7 @@ import { ShoppingCart } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg"; // Adjust path if needed
+const AWS_CDN_URL = import.meta.env.VITE_AWS_CDN_URL; // Get CDN URL from environment
 
 // Helper to format currency (adapt to your needs and locale)
 const formatCurrency = (amount) => {
@@ -15,6 +16,17 @@ const formatCurrency = (amount) => {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2 
     }).format(amount);
+}
+
+// Helper to generate CDN image URL
+const generateImageUrl = (imageKey) => {
+    if (!imageKey || !AWS_CDN_URL) return PLACEHOLDER_IMAGE;
+    
+    // Remove leading slash if present in CDN URL and ensure proper concatenation
+    const cdnBase = AWS_CDN_URL.endsWith('/') ? AWS_CDN_URL.slice(0, -1) : AWS_CDN_URL;
+    const key = imageKey.startsWith('/') ? imageKey.slice(1) : imageKey;
+    
+    return `${cdnBase}/${key}`;
 }
 
 // Reusing animation variants
@@ -47,7 +59,8 @@ const ProductResults = ({ products = [], isLoading, error, loadMore, hasMore }) 
     return (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {products.map((product, index) => {
-                 const imageUrl = product?.images?.[0]?.azureUrl || PLACEHOLDER_IMAGE;
+                 const imageKey = product?.images?.[0]?.key;
+                 const imageUrl = generateImageUrl(imageKey);
                  const price = product?.productPrice;
                  const mrp = product?.MRP;
                  const hasDiscount = mrp != null && price != null && mrp > price; // Check for nulls

@@ -2,9 +2,20 @@ import axios from 'axios';
 import { backendurl } from '../../config';
 import { REFRESH_TOKEN } from '../components/api/apiDetails';
 
+// const axiosInstance = axios.create({
+//     baseURL: backendurl,
+//     withCredentials: true
+// });
+
 const axiosInstance = axios.create({
     baseURL: backendurl,
-    withCredentials: true
+    withCredentials: true,
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    },
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
 });
 
 let isRefreshing = false;

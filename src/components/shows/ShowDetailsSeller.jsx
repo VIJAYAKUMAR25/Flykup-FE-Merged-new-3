@@ -982,7 +982,7 @@ import { useEffect, useRef, useState, useCallback, useContext } from "react";
 import { MessageCircle, Volume2, ArrowLeft,Clock,X, LucideWallet, Package, Gavel, Users, Trophy } from "lucide-react";
 import LikeButton from "./ui/LikeButton";
 import { useNavigate, useParams, UNSAFE_NavigationContext } from "react-router-dom";
-import { socketurl } from "../../../config"; // Ensure correct path
+import { socketurl } from "../../../config";
 import axios from "axios";
 import LiveComments from "./LiveComments";
 import io from "socket.io-client";
@@ -996,14 +996,26 @@ import { toast } from "react-toastify";
 import { AnimatePresence, motion } from "framer-motion";
 import StartStream from "../reuse/LiveStream/StartStream";
 
-import GiveAwaySellerControl from "./GiveAway"; // Make sure this path is correct
+import GiveAwaySellerControl from "./GiveAway";
+
+const getProductIdSafely = (productField) => {
+    if (!productField) return null; // Handles null/undefined productField itself
+
+    // If it's an object (meaning it was populated), get its _id
+    if (typeof productField === 'object' && productField !== null && productField._id) {
+        return productField._id.toString(); // Ensure it's a string for consistent comparison
+    }
+    // Otherwise, it's presumed to be the ID string directly, or just return it as is (if it was somehow null/undefined string)
+    return productField.toString(); 
+};
+
 
 const ShowDetailsSeller = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { showId } = useParams();
-    const [show, setShow] = useState(null); // Initialize as null to clearly indicate loading
-    const [loading, setLoading] = useState(true); // Track loading state for show data
+    const [show, setShow] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [liked, setLiked] = useState(false);
     const [likes, setLikes] = useState(0);
     const [userId] = useState(user?._id);
@@ -1025,9 +1037,9 @@ const ShowDetailsSeller = () => {
     useEffect(() => {
         if (user) {
             const newSocket = io.connect(socketurl, {
-                transports: ['websocket'], // Force WebSocket transport
+                transports: ['websocket'],
                 auth: {
-                    userId: user._id, // 'user._id' is now available
+                    userId: user._id,
                 },
             });
             setSocket(newSocket);
@@ -1041,7 +1053,7 @@ const ShowDetailsSeller = () => {
 
     // Fetch show data initially only once
     const fetchShowInitial = useCallback(async () => {
-        setLoading(true); // Start loading
+        setLoading(true);
         try {
             const response = await axios.get(`${socketurl}/api/shows/get/${showId}`, {
                 withCredentials: true,
@@ -1055,22 +1067,22 @@ const ShowDetailsSeller = () => {
                 if (showData.currentGiveaway && showData.currentGiveaway.isActive && !showData.currentGiveaway.isGiveawayEnded) {
                     setCurrentLiveGiveaway(showData.currentGiveaway);
                 } else {
-                    setCurrentLiveGiveaway(null); // Clear if no active giveaway
+                    setCurrentLiveGiveaway(null);
                 }
 
-                // Combine all product types into a single array for signed URLs
+                // Collect all products for signed URLs safely
                 const allProductsToSign = [
                     ...(showData?.buyNowProducts || []),
                     ...(showData?.auctionProducts || []),
                     ...(showData?.giveawayProducts || []),
-                    // Include currentGiveaway's product if it's not null, for signed URL generation
-                    ...(showData.currentGiveaway && showData.currentGiveaway.productId ? [{ productId: showData.currentGiveaway.productId }] : []),
-                ];
+                ].filter(p => p.productId); // Filter out any entries without a productId before processing
 
-                const validProductsForUrls = allProductsToSign.filter(
-                    (p) => p.productId && p.productId.images && p.productId.images[0] && p.productId.images[0].key
-                );
-                fetchSignedUrlsForProducts(validProductsForUrls);
+                // Safely add currentGiveaway product if it exists and has an ID
+                if (showData.currentGiveaway && getProductIdSafely(showData.currentGiveaway.productId)) {
+                    allProductsToSign.push({ productId: showData.currentGiveaway.productId });
+                }
+
+                fetchSignedUrlsForProducts(allProductsToSign);
 
             } else {
                 console.error("Failed to fetch show details.");
@@ -1080,15 +1092,14 @@ const ShowDetailsSeller = () => {
             console.error("Error fetching show details:", error);
             toast.error("Error fetching show details.");
         } finally {
-            setLoading(false); // End loading
+            setLoading(false);
         }
     }, [showId]);
 
     useEffect(() => {
-        fetchShowInitial(); // Call the initial fetch on mount
+        fetchShowInitial();
     }, [showId, fetchShowInitial]);
 
-    // Update local states when show data changes (e.g., from fetchShowInitial or WebSocket updates)
     useEffect(() => {
         if (show) {
             setLikes(show?.likes);
@@ -1103,8 +1114,9 @@ const ShowDetailsSeller = () => {
         const cdnURL = import.meta.env.VITE_AWS_CDN_URL;
 
         for (const product of productsArray) {
-            if (product.productId && product.productId.images && product.productId.images[0] && product.productId.images[0].key) {
-                urls[product.productId._id] = cdnURL + product.productId.images[0].key;
+            const productId = getProductIdSafely(product.productId); // Use safe getter here
+            if (productId && product.productId.images && product.productId.images[0] && product.productId.images[0].key) {
+                urls[productId] = cdnURL + product.productId.images[0].key;
             }
         }
         setSignedUrls(urls);
@@ -1122,7 +1134,6 @@ const ShowDetailsSeller = () => {
         }
     };
 
-    // Socket.IO listeners for real-time updates (likes, viewer count, and GIVEAWAY)
     useEffect(() => {
         if (!socket || !showId) {
             console.log("Socket or ShowId not ready for listeners.");
@@ -1140,24 +1151,24 @@ const ShowDetailsSeller = () => {
             setViewerCount(count);
         };
 
-        // --- MODIFIED GIVEAWAY LISTENERS FOR SELLER SIDE (FULL WEB SOCKET UPDATE) ---
         const handleGiveawayStarted = (data) => {
             console.log("Seller: Giveaway started event received", data);
             setCurrentLiveGiveaway(data); // Update currentLiveGiveaway directly from socket data
             setShow(prevShow => {
                 if (!prevShow) return prevShow;
 
-                const newGiveawayProductId = (data.productId._id || data.productId).toString();
+                const newGiveawayProductId = getProductIdSafely(data.productId); // Safely get incoming product ID
 
                 const updatedGiveawayProducts = prevShow.giveawayProducts.map(gp => {
-                    const existingProductId = (gp.productId._id || gp.productId).toString();
-                    if (existingProductId === newGiveawayProductId) {
+                    const historicalProductId = getProductIdSafely(gp.productId); // Safely get historical product ID
+
+                    if (historicalProductId && newGiveawayProductId && historicalProductId === newGiveawayProductId) {
                         return {
                             ...gp,
                             isActive: true,
                             isGiveawayEnded: false,
                             applicants: data.applicants || gp.applicants,
-                            winner: data.winner || gp.winner,
+                            winner: data.winner || gp.winner, // winner here is already a populated object from backend
                             createdAt: data.createdAt || gp.createdAt,
                             giveawayNumber: data.giveawayNumber || gp.giveawayNumber
                         };
@@ -1172,7 +1183,7 @@ const ShowDetailsSeller = () => {
             console.log("Seller: Giveaway applicants updated event received", data.applicants);
             // Update currentLiveGiveaway for the `GiveAwaySellerControl` prop
             setCurrentLiveGiveaway(prev => {
-                if (prev && (data.productId._id || data.productId).toString() === (prev.productId._id || prev.productId).toString()) {
+                if (prev && getProductIdSafely(data.productId) === getProductIdSafely(prev.productId)) {
                     return {
                         ...prev,
                         applicants: data.applicants || [],
@@ -1183,7 +1194,7 @@ const ShowDetailsSeller = () => {
             // Also update the main `show` state for consistency
             setShow(prevShow => {
                 if (!prevShow || !prevShow.currentGiveaway) return prevShow;
-                if ((data.productId._id || data.productId).toString() === (prevShow.currentGiveaway.productId._id || prevShow.currentGiveaway.productId).toString()) {
+                if (getProductIdSafely(data.productId) === getProductIdSafely(prevShow.currentGiveaway.productId)) {
                     return {
                         ...prevShow,
                         currentGiveaway: {
@@ -1196,52 +1207,26 @@ const ShowDetailsSeller = () => {
             });
         };
 
-       const handleGiveawayWinner = (data) => {
-                console.log("Seller: Giveaway winner event received", data.winner);
-                toast.success(`Winner selected for: ${data.productTitle || data.productId?.title}!`);
-
-                setCurrentLiveGiveaway(null); // Clear local active giveaway state
-
-                setShow(prevShow => {
-                    if (!prevShow) return prevShow;
-
-                    const updatedGiveawayProducts = prevShow.giveawayProducts.map(gp => {
-                        if ((gp.productId._id || gp.productId).toString() === (data.productId._id || data.productId).toString()) {
-                            return {
-                                ...gp,
-                                isActive: false,
-                                isGiveawayEnded: true,
-                                winner: data.winner, // <--- CHANGE THIS: Store the full data.winner object
-                                applicants: prevShow.currentGiveaway?.applicants || gp.applicants // Preserve applicants from what was active
-                            };
-                        }
-                        return gp;
-                    });
-
-                    return {
-                        ...prevShow,
-                        currentGiveaway: null, // Clear the current active giveaway
-                        giveawayProducts: updatedGiveawayProducts, // Update the historical list
-                    };
-                });
-            };
-
-        const handleGiveawayEndedManually = (data) => {
-            console.log("Seller: Giveaway ended manually event received", data);
-            toast.info(`Giveaway manually ended for: ${data.productTitle || data.productId?.title}.`);
+        const handleGiveawayWinner = (data) => {
+            console.log("Seller: Giveaway winner event received", data.winner);
+            toast.success(`Winner selected for: ${data.productTitle || getProductIdSafely(data.productId) || 'product'}!`);
             
-            setCurrentLiveGiveaway(null); // Clear local active giveaway state
+            setCurrentLiveGiveaway(null);
 
             setShow(prevShow => {
                 if (!prevShow) return prevShow;
 
+                const incomingProductId = getProductIdSafely(data.productId);
+
                 const updatedGiveawayProducts = prevShow.giveawayProducts.map(gp => {
-                    if ((gp.productId._id || gp.productId).toString() === (data.productId._id || data.productId).toString()) {
+                    const historicalProductId = getProductIdSafely(gp.productId);
+
+                    if (historicalProductId && incomingProductId && historicalProductId === incomingProductId) {
                         return {
                             ...gp,
                             isActive: false,
                             isGiveawayEnded: true,
-                            winner: null, // No winner on manual end
+                            winner: data.winner, // Store full winner object
                             applicants: prevShow.currentGiveaway?.applicants || gp.applicants
                         };
                     }
@@ -1250,8 +1235,42 @@ const ShowDetailsSeller = () => {
 
                 return {
                     ...prevShow,
-                    currentGiveaway: null, // Clear the current active giveaway
-                    giveawayProducts: updatedGiveawayProducts, // Update the historical list
+                    currentGiveaway: null,
+                    giveawayProducts: updatedGiveawayProducts,
+                };
+            });
+        };
+
+        const handleGiveawayEndedManually = (data) => {
+            console.log("Seller: Giveaway ended manually event received", data);
+            toast.info(`Giveaway manually ended for: ${data.productTitle || getProductIdSafely(data.productId) || 'product'}.`);
+            
+            setCurrentLiveGiveaway(null);
+
+            setShow(prevShow => {
+                if (!prevShow) return prevShow;
+
+                const incomingProductId = getProductIdSafely(data.productId);
+
+                const updatedGiveawayProducts = prevShow.giveawayProducts.map(gp => {
+                    const historicalProductId = getProductIdSafely(gp.productId);
+
+                    if (historicalProductId && incomingProductId && historicalProductId === incomingProductId) {
+                        return {
+                            ...gp,
+                            isActive: false,
+                            isGiveawayEnded: true,
+                            winner: null,
+                            applicants: prevShow.currentGiveaway?.applicants || gp.applicants
+                        };
+                    }
+                    return gp;
+                });
+
+                return {
+                    ...prevShow,
+                    currentGiveaway: null,
+                    giveawayProducts: updatedGiveawayProducts,
                 };
             });
         };
@@ -1280,7 +1299,7 @@ const ShowDetailsSeller = () => {
                 socket.off('giveawayAlreadyActive', handleGiveawayAlreadyActive);
             }
         };
-    }, [socket, showId, userId]); // Dependencies. currentLiveGiveaway removed as it's now set within the handlers and `show` is the source.
+    }, [socket, showId, userId]);
 
 
     const streamTime = 0; 
@@ -1365,7 +1384,7 @@ const ShowDetailsSeller = () => {
                             <div className="space-y-4">
                                 {show?.auctionProducts?.length ? (
                                     show.auctionProducts.map((taggedProduct) => (
-                                        <div key={taggedProduct._id || taggedProduct.productId?._id} className="overflow-hidden">
+                                        <div key={getProductIdSafely(taggedProduct.productId)} className="overflow-hidden"> {/* Use safe getter for key */}
                                             <Auctions showId={showId} streamId={showId} product={taggedProduct} signedUrls={signedUrls} socket={socket} />
                                         </div>
                                     ))
@@ -1381,7 +1400,7 @@ const ShowDetailsSeller = () => {
                             <div className="space-y-4">
                                 {show?.buyNowProducts?.length ? (
                                     show.buyNowProducts.map((taggedProduct) => (
-                                        <div key={taggedProduct._id || taggedProduct.productId?._id} className="overflow-hidden">
+                                        <div key={getProductIdSafely(taggedProduct.productId)} className="overflow-hidden"> {/* Use safe getter for key */}
                                             <BuyProductsSellers showId={showId} streamId={showId} product={taggedProduct} signedUrls={signedUrls} socket={socket} />
                                         </div>
                                     ))
@@ -1394,7 +1413,6 @@ const ShowDetailsSeller = () => {
                             </div>
                         )}
 
-                        {/* --- MODIFIED: Giveaway Tab Content for Seller --- */}
                         {activeTab === "Giveaway" && (
                             <div className="space-y-4">
                                 {/* Display currently active giveaway if it exists */}
@@ -1408,8 +1426,7 @@ const ShowDetailsSeller = () => {
                                             product={currentLiveGiveaway}
                                             signedUrls={signedUrls}
                                             socket={socket}
-                                            setCurrentLiveGiveaway={setCurrentLiveGiveaway} // Passed to update child internal states if needed
-                                            // fetchShow is removed from here
+                                            setCurrentLiveGiveaway={setCurrentLiveGiveaway}
                                         />
                                     </>
                                 ) : (
@@ -1428,10 +1445,10 @@ const ShowDetailsSeller = () => {
                                             .map((taggedProduct) => {
                                                 const anyGiveawayActive = currentLiveGiveaway && currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded;
                                                 return (
-                                                    <div key={taggedProduct.productId._id} className="border border-stone-800 rounded-xl p-4 bg-stone-900 shadow-md">
+                                                    <div key={getProductIdSafely(taggedProduct.productId)} className="border border-stone-800 rounded-xl p-4 bg-stone-900 shadow-md"> {/* Use safe getter for key */}
                                                         <div className="flex items-center gap-4 mb-3">
                                                             <img
-                                                                src={signedUrls[taggedProduct.productId._id] || "/placeholder.svg"}
+                                                                src={signedUrls[getProductIdSafely(taggedProduct.productId)] || "/placeholder.svg"} 
                                                                 className="w-16 h-16 object-contain rounded-lg border border-stone-700"
                                                                 alt={taggedProduct.productId.title}
                                                             />
@@ -1445,24 +1462,24 @@ const ShowDetailsSeller = () => {
 
                                                         <button
                                                             onClick={() => {
-                                                            if (socket) {
-                                                                const giveawayData = {
-                                                                    streamId: showId,
-                                                                    productId: taggedProduct.productId._id,
-                                                                    productTitle: taggedProduct.productId.title,
-                                                                    followersOnly: taggedProduct.followersOnly || false,
-                                                                    productOwnerSellerId: taggedProduct.productOwnerSellerId,
-                                                                };
-                                                                console.log("Attempting to start giveaway with data:", giveawayData);
-                                                                socket.emit('startGiveaway', giveawayData);
-                                                            } else {
-                                                                toast.error("Socket not connected. Please refresh.");
-                                                            }
+                                                                if (socket) {
+                                                                    const giveawayData = {
+                                                                        streamId: showId,
+                                                                        productId: getProductIdSafely(taggedProduct.productId), // Use safe getter
+                                                                        productTitle: taggedProduct.productId.title,
+                                                                        followersOnly: taggedProduct.followersOnly || false,
+                                                                        productOwnerSellerId: taggedProduct.productOwnerSellerId,
+                                                                    };
+                                                                    console.log("Attempting to start giveaway with data:", giveawayData);
+                                                                    socket.emit('startGiveaway', giveawayData);
+                                                                } else {
+                                                                    toast.error("Socket not connected. Please refresh.");
+                                                                }
                                                             }}
-                                                            className={`w-full py-2 rounded-lg font-semibold text-sm transition-colors ${anyGiveawayActive || !socket ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
+                                                            className={`w-full py-2 text-sm rounded-lg font-semibold transition-colors ${anyGiveawayActive || !socket ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
                                                             disabled={anyGiveawayActive || !socket}
                                                         >
-                                                            {anyGiveawayActive ? 'Another Giveaway Active' : 'Start This Giveaway'}
+                                                            {anyGiveawayActive ? 'Another Giveaway Active' : 'Start Giveaway'}
                                                         </button>
                                                     </div>
                                                 );
@@ -1478,9 +1495,9 @@ const ShowDetailsSeller = () => {
                                             .filter(p => p.isGiveawayEnded)
                                             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                                             .map(completedProduct => (
-                                                <div key={completedProduct.productId._id} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2">
+                                                <div key={getProductIdSafely(completedProduct.productId)} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2"> {/* Use safe getter for key */}
                                                     <img
-                                                        src={signedUrls[completedProduct.productId._id] || "/placeholder.svg"}
+                                                        src={signedUrls[getProductIdSafely(completedProduct.productId)] || "/placeholder.svg"} 
                                                         className="w-12 h-12 object-contain rounded-lg border border-stone-700"
                                                         alt={completedProduct.productTitle}
                                                     />
@@ -1627,7 +1644,7 @@ const ShowDetailsSeller = () => {
                                         {show?.auctionProducts?.length ? (
                                             show?.auctionProducts?.map((taggedProduct) => (
                                                 <div
-                                                    key={taggedProduct._id || taggedProduct.productId?._id}
+                                                    key={getProductIdSafely(taggedProduct.productId)} 
                                                     className="overflow-hidden"
                                                 >
                                                     <Auctions showId={showId} streamId={showId} product={taggedProduct} signedUrls={signedUrls} socket={socket}/>
@@ -1646,7 +1663,7 @@ const ShowDetailsSeller = () => {
                                         {show?.buyNowProducts?.length ? (
                                             show?.buyNowProducts?.map((taggedProduct) => (
                                                 <div
-                                                    key={taggedProduct._id || taggedProduct.productId?._id}
+                                                    key={getProductIdSafely(taggedProduct.productId)} 
                                                     className="overflow-hidden"
                                                 >
                                                     <BuyProductsSellers
@@ -1669,7 +1686,6 @@ const ShowDetailsSeller = () => {
 
                                 {activeTab === "Giveaway" && (
                                     <div className="space-y-4">
-                                        {/* Display currently active giveaway if it exists */}
                                         {currentLiveGiveaway && currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded ? (
                                             <>
                                                 <div className="bg-yellow-400 text-stone-900 p-3 rounded-lg text-center font-semibold text-sm mb-4 animate-pulse">
@@ -1698,10 +1714,10 @@ const ShowDetailsSeller = () => {
                                                     .map((taggedProduct) => {
                                                         const anyGiveawayActive = currentLiveGiveaway && currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded;
                                                         return (
-                                                            <div key={taggedProduct.productId._id} className="border border-stone-800 rounded-xl p-4 bg-stone-900 shadow-md">
+                                                            <div key={getProductIdSafely(taggedProduct.productId)} className="border border-stone-800 rounded-xl p-4 bg-stone-900 shadow-md"> 
                                                                 <div className="flex items-center gap-4 mb-3">
                                                                     <img
-                                                                        src={signedUrls[taggedProduct.productId._id] || "/placeholder.svg"}
+                                                                        src={signedUrls[getProductIdSafely(taggedProduct.productId)] || "/placeholder.svg"} 
                                                                         className="w-16 h-16 object-contain rounded-lg border border-stone-700"
                                                                         alt={taggedProduct.productId.title}
                                                                     />
@@ -1715,19 +1731,19 @@ const ShowDetailsSeller = () => {
 
                                                                 <button
                                                                     onClick={() => {
-                                                                    if (socket) {
-                                                                        const giveawayData = {
-                                                                            streamId: showId,
-                                                                            productId: taggedProduct.productId._id,
-                                                                            productTitle: taggedProduct.productId.title,
-                                                                            followersOnly: taggedProduct.followersOnly || false,
-                                                                            productOwnerSellerId: taggedProduct.productOwnerSellerId,
-                                                                        };
-                                                                        console.log("Attempting to start giveaway with data:", giveawayData);
-                                                                        socket.emit('startGiveaway', giveawayData);
-                                                                    } else {
-                                                                        toast.error("Socket not connected. Please refresh.");
-                                                                    }
+                                                                        if (socket) {
+                                                                            const giveawayData = {
+                                                                                streamId: showId,
+                                                                                productId: getProductIdSafely(taggedProduct.productId), // Use safe getter
+                                                                                productTitle: taggedProduct.productId.title,
+                                                                                followersOnly: taggedProduct.followersOnly || false,
+                                                                                productOwnerSellerId: taggedProduct.productOwnerSellerId,
+                                                                            };
+                                                                            console.log("Attempting to start giveaway with data:", giveawayData);
+                                                                            socket.emit('startGiveaway', giveawayData);
+                                                                        } else {
+                                                                            toast.error("Socket not connected. Please refresh.");
+                                                                        }
                                                                     }}
                                                                     className={`w-full py-2 text-sm rounded-lg font-semibold transition-colors ${anyGiveawayActive || !socket ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
                                                                     disabled={anyGiveawayActive || !socket}
@@ -1747,9 +1763,9 @@ const ShowDetailsSeller = () => {
                                                     .filter(p => p.isGiveawayEnded)
                                                     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                                                     .map(completedProduct => (
-                                                        <div key={completedProduct.productId._id} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2">
+                                                        <div key={getProductIdSafely(completedProduct.productId)} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2"> 
                                                             <img
-                                                                src={signedUrls[completedProduct.productId._id] || "/placeholder.svg"}
+                                                                src={signedUrls[getProductIdSafely(completedProduct.productId)] || "/placeholder.svg"} 
                                                                 className="w-12 h-12 object-contain rounded-lg border border-stone-700"
                                                                 alt={completedProduct.productTitle}
                                                             />
@@ -1768,6 +1784,7 @@ const ShowDetailsSeller = () => {
                                             </div>
                                         )}
 
+                                        {/* Message if no giveaways at all */}
                                         {!currentLiveGiveaway &&
                                             show?.giveawayProducts?.filter(p => !p.isActive && !p.isGiveawayEnded).length === 0 &&
                                             show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length === 0 && (

@@ -290,10 +290,48 @@ console.log("product", product);
             }, 
         });
 
-        setHasApplied(true); // Optimistic update
-        setApplicantsCount((prevCount) => prevCount + 1); // Optimistic update for count
-        toast.success("Application submitted!");
-    }, [streamId, product, user, hasApplied, socket]); // Depend on relevant states/props and socket
+      if (!user || !product || !product.productId) {
+        toast.error("Invalid product or user data for giveaway application.");
+        return;
+    }
+
+    // This is the key change: Safely extract the product ID string
+    // product.productId is expected to be a populated object from ShowDetailsPage.jsx
+    const productIdToSend = product.productId._id; 
+
+    // Add a quick check in case product.productId somehow isn't populated as expected
+    if (!productIdToSend) {
+        console.error("Critical: productId._id is missing from populated product object in GiveAwayUsers.", product);
+        toast.error("Error preparing giveaway application: Product ID missing.");
+        return;
+    }
+
+    console.log("Applying for giveaway user clicked socket emitted :", {
+        streamId,
+        productId: productIdToSend, // <--- Send ONLY the string ID
+        user: {
+            _id: user._id,
+            name: user.name,
+            userName: user.userName,
+            profileURL: user.profileURL,
+        },
+    });
+
+    socket.emit("applyGiveaway", {
+        streamId,
+        productId: productIdToSend, 
+        user: {
+            _id: user._id,
+            name: user.name,
+            userName: user.userName,
+            profileURL: user.profileURL,
+        },
+    });
+
+    setHasApplied(true); // Optimistic update
+    setApplicantsCount((prevCount) => prevCount + 1); // Optimistic update for count
+    toast.success("Application submitted!");
+}, [streamId, product, user, hasApplied, socket]);// Depend on relevant states/props and socket
 
     if (!product || !product.productId) {
         // This component should ideally only render when `product` (currentGiveaway) is valid

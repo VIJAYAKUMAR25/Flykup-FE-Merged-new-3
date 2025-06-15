@@ -212,8 +212,8 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
       {/* Header with timer and controls */}
       <div className="flex justify-between items-center p-3 bg-stone-800 border-b border-stone-700">
         <div className="flex items-center gap-2">
-          <Gavel className="w-5 h-5 text-amber-500" />
-          <h3 className="font-semibold text-white">Auction Controls</h3>
+          <Gavel className="w-5 h-5 text-newYellow" />
+          <h3 className="font-semibold text-white">Auction</h3>
         </div>
 
         {isActive ? (
@@ -227,16 +227,16 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
           <div className="flex space-x-2">
             <button
               onClick={handleStartAuction}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
+              className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-600 hover:bg-green-700 text-white text-xs font-medium transition-colors"
             >
-              <PlayIcon className="w-3.5 h-3.5" />
+              <PlayIcon className="w-2.5 h-2.5" />
               Start
             </button>
 
             {bidderWon && (
               <button
                 onClick={handleClearAuction}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-medium transition-colors"
               >
                 <XCircle className="w-3.5 h-3.5" />
                 Clear
@@ -257,14 +257,14 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
             />
           </div>
           <div className="flex-1">
-            <h4 className="text-lg font-bold text-white">{product?.productId?.title || "Product Title"}</h4>
+            <h4 className="text-md font-bold text-white">{product?.productId?.title || "Product Title"}</h4>
               {/* <p className="text-stone-400 text-sm line-clamp-2">
                 {product?.productId?.description || "No description available"}
               </p> */}
 
             {!isActive && !bidderWon && (
-              <div className="mt-2 flex items-center gap-1.5 text-sm text-stone-400">
-                <AlertCircle className="w-4 h-4 text-amber-500" />
+              <div className=" flex items-center gap-1 text-xs text-stone-400">
+                <AlertCircle className="w-4 h-4 text-newYellow" />
                 <span>Start auction to begin bidding</span>
               </div>
             )}
@@ -274,9 +274,9 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
         {/* Bid information */}
         <div className="mt-4 text-center">
           {isActive && (
-            <div className="bg-stone-950/50 rounded-lg p-4 border border-stone-800">
-              <p className="text-sm text-stone-400 mb-1">Current Bid</p>
-              <p className="text-3xl font-bold text-amber-500 flex items-center justify-center gap-1">
+            <div className="bg-yellowHalf rounded-lg p-1 border border-stone-800">
+              <p className="text-sm text-whiteLight ">Current Bid</p>
+              <p className="text-3xl font-bold text-newYellow flex items-center justify-center gap-1">
                 <IndianRupee className="w-6 h-6" /> {highestBid?.toLocaleString() || "0"}
               </p>
 

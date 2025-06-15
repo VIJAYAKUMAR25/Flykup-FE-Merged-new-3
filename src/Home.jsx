@@ -102,7 +102,7 @@ const Home = ({ inputData, setInputData }) => {
           <Route path="brand-seller-registration" element={<BrandSeller />} />
           <Route path="shows" element={<Shows />} />
           <Route path="liveshows" element={<ShowsFeed />} />
-          <Route path="show/:id" element={<ShowDetailsPage />} />
+          {/* <Route path="show/:id" element={<ShowDetailsPage />} /> */}
 
           <Route path="reels" element={<Feed />} />
           <Route path="reel/:reelId" element={<Feed />} />

@@ -161,7 +161,7 @@ const EditProfileModal = ({ onProfileUpdate }) => {
         <>
             <button
                 onClick={openModal}
-                className='btn bg-slate-800 hover:bg-slate-700 text-white rounded-xl px-6 h-11 min-h-11 border-none transition-all duration-300'
+                className='btn bg-slate-800 hover:bg-slate-700 text-white rounded-xl  px-6 h-11 min-h-11 border-none transition-all duration-300'
                 aria-label="Edit profile"
             >
                 <LuPencil size={16} />
@@ -170,7 +170,7 @@ const EditProfileModal = ({ onProfileUpdate }) => {
 
             <AnimatePresence>
                 {isOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{zIndex: 9999}}>
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}

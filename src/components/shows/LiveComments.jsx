@@ -333,7 +333,7 @@ const LiveComments = ({ streamId, prevComments, height }) => {
     return (
         <div
             className="w-full flex flex-col font-inter"
-            style={{ maxHeight: height || "50vh" }}
+            style={{ maxHeight: height || "30vh" }}
         >
             {/* Chat Messages Container */}
             <div

@@ -236,7 +236,6 @@
 // export default BuyProducts;
 
 
-
 import { IndianRupee } from 'lucide-react';
 import { useState } from 'react';
 import io from 'socket.io-client';
@@ -244,8 +243,7 @@ import CashfreePaymentGateway from './CashfreePaymentGateway';
 import PaymentSuccess from './PaymentSuccess';
 import PaymentFailed from './PaymentFailed';
 import { AddressSelection } from './AddressSelection';
-import { OrderSummary } from './OrderSummary'; // Import OrderSummary component
-// import { SOCKET_URL } from '../api/apiDetails';
+import { OrderSummary } from './OrderSummary';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { toast } from 'react-toastify';
@@ -253,12 +251,26 @@ import { useAlert } from '../Alerts/useAlert';
 import { socketurl } from '../../../config';
 
 const socket = io.connect(socketurl, {
-  transports: ['websocket'], // Force WebSocket transport
+  transports: ['websocket'],
 });
 
 const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, currentAuction }) => {
   const { user } = useAuth();
-  const { cart, addProduct } = useCart()
+  
+  // Add error handling for useCart
+  const cartContext = useCart();
+  if (!cartContext) {
+    console.error('useCart must be used within a CartProvider');
+    // Provide fallback values
+    var cart = [];
+    var addProduct = () => {
+      console.warn('Cart functionality not available - CartProvider missing');
+      toast.error('Cart functionality not available');
+    };
+  } else {
+    var { cart, addProduct } = cartContext;
+  }
+
   const [showPayment, setShowPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentStatus, setPaymentStatus] = useState(null);
@@ -267,8 +279,7 @@ const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, current
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [checkoutStep, setCheckoutStep] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
-  const { positive, negative } = useAlert()
-
+  const { positive, negative } = useAlert();
 
   const handleBuy = () => {
     const totalAmount = product?.productPrice * selectedQuantity;
@@ -281,9 +292,14 @@ const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, current
   };
 
   const handleAddToCart = () => {
-    addProduct(product.productId, selectedQuantity)
-    positive("Added to cart!");
-  }
+    try {
+      addProduct(product.productId, selectedQuantity);
+      positive("Added to cart!");
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      negative("Failed to add to cart");
+    }
+  };
 
   const handlePaymentSuccess = (paymentDetails) => {
     setPaymentDetails(paymentDetails);
@@ -321,73 +337,76 @@ const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, current
   };
 
   return (
-<div className="mx-auto text-white">
-  <div className="w-full max-w-[320px] mx-auto bg-stone-900 rounded-lg shadow-sm border border-stone-800 overflow-hidden">
-    <div className="flex h-28">
-      {/* Product Image - Left Side */}
-      <div className="relative w-28 h-28 flex-shrink-0">
-        <img
-          src={signedUrls[product.productId._id] || "https://media.istockphoto.com/id/1495664030/photo/sneakers-on-dark-gray-concrete-background-texture-of-the-old-dark-stone-or-broken-brick-the.jpg?s=612x612&w=0&k=20&c=o2yWDPIHm6pTUw5MKhGQ0X83cfGM2RUuO7RGCCrrsU8="}
-          className="w-full h-full object-cover rounded-l-lg"
-          alt={product.productId.title}
-        />
-      </div>
- 
-      {/* Product Info - Right Side */}
-      <div className="flex-1 p-3 flex flex-col justify-between min-w-0 relative">
-        <div className="space-y-1.5">
-          <h2 className="text-xs font-semibold text-white">{product.productId.title}</h2>
-          <p className="text-[10px] text-stone-300 leading-relaxed line-clamp-2 pr-16">
-            {product.productId.description}
-          </p>
-                     
-          {/* Price */}
-          <div className="text-xs font-semibold flex items-center gap-1 text-green-400 mt-2">
-            <IndianRupee size={12} />
-            {handleNumericAmnt(product?.productPrice * selectedQuantity)}
+    <div className="mx-auto text-white">
+      <div className="w-full max-w-[320px] mx-auto bg-stone-900 rounded-lg shadow-sm border border-stone-800 overflow-hidden">
+        <div className="flex h-28 rounded-lg overflow-hidden shadow-lg">
+          {/* Product Image - Left Side */}
+          <div className="relative w-28 h-28 flex-shrink-0">
+            <img
+              src={signedUrls[product.productId._id] || "https://media.istockphoto.com/id/1495664030/photo/sneakers-on-dark-gray-concrete-background-texture-of-the-old-dark-stone-or-broken-brick-the.jpg?s=612x612&w=0&k=20&c=o2yWDPIHm6pTUw5MKhGQ0X83cfGM2RUuO7RGCCrrsU8="}
+              className="w-full h-full object-cover"
+              alt={product.productId.title}
+            />
           </div>
-        </div>
+          
+          {/* Product Info - Right Side */}
+          <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
+            {/* Top Section - Title and Description */}
+            <div className="space-y-2">
+              <h2 className="text-sm font-bold text-white truncate">
+                {product.productId.title}
+              </h2>
+              <p className="text-xs text-gray-300 leading-tight line-clamp-2">
+                {product.productId.description}
+              </p>
+            </div>
                           
-        {/* Bottom section with Quantity Controls and Buy Button */}
-        <div className="flex items-center justify-between mt-1">
-          {/* Quantity Control */}
-          <div className="bg-black bg-opacity-70 backdrop-blur-sm px-1 py-1 rounded-full flex items-center gap-1.5 text-white font-semibold text-[10px]">
-            <button
-              onClick={() => setSelectedQuantity(Math.max(1, selectedQuantity - 1))}
-              className="hover:text-red-400 transition text-[10px] w-4 h-4 flex items-center justify-center"
-            >
-              -
-            </button>
-            <span className="min-w-[10px] text-center text-[10px]">{selectedQuantity}</span>
-            <button
-              onClick={() => setSelectedQuantity(selectedQuantity + 1)}
-              className="hover:text-green-400 transition text-[10px] w-4 h-4 flex items-center justify-center"
-            >
-              +
-            </button>
+            {/* Bottom Section - Price and Action */}
+            <div className="flex items-center justify-between mt-2">
+              {/* Price */}
+              <div className="flex items-center gap-1">
+                <IndianRupee size={14} className="text-green-400" />
+                <span className="text-sm font-bold text-green-400">
+                  {handleNumericAmnt(product?.productPrice * selectedQuantity)}
+                </span>
+              </div>
+              
+              {/* Quantity Control - Uncomment if needed */}
+              {/* <div className="bg-black bg-opacity-70 backdrop-blur-sm px-1 py-1 rounded-full flex items-center gap-1.5 text-white font-semibold text-[10px]">
+                <button
+                  onClick={() => setSelectedQuantity(Math.max(1, selectedQuantity - 1))}
+                  className="hover:text-red-400 transition text-[10px] w-4 h-4 flex items-center justify-center"
+                >
+                  -
+                </button>
+                <span className="min-w-[10px] text-center text-[10px]">{selectedQuantity}</span>
+                <button
+                  onClick={() => setSelectedQuantity(selectedQuantity + 1)}
+                  className="hover:text-green-400 transition text-[10px] w-4 h-4 flex items-center justify-center"
+                >
+                  +
+                </button>
+              </div> */}
+              
+              {/* Buy Button */}
+              <button 
+                onClick={handleBuy}
+                className="bg-yellow-400 hover:bg-yellow-500 text-black px-2 py-1 rounded-full text-[10px] font-semibold transition-colors duration-200 shadow-sm"
+              >
+                Buy Now
+              </button>
+              
+              {/* Add to Cart Button - Uncomment if needed */}
+              {/* <button
+                onClick={handleAddToCart}
+                className="w-full px-3 py-[5px] sm:py-1.5 bg-gradient-to-r from-emerald-500 to-green-500 text-black rounded-full text-[10px] sm:text-xs font-semibold shadow-sm"
+              >
+                Add to Cart
+              </button> */}
+            </div>
           </div>
-
-          {/* Buy Button */}
-      <button
-  onClick={handleBuy}
-  className="bg-yellow-400  hover:bg-yellow-600 text-black rounded-full text-[8px] font-semibold shadow-sm flex items-center px-2 py-1"
->
-  Buy Now
-</button>
-
         </div>
-            
-        {/* <button
-        onClick={handleAddToCart}
-        className="w-full px-3 py-[5px] sm:py-1.5 bg-gradient-to-r from-emerald-500 to-green-500 text-black rounded-full text-[10px] sm:text-xs font-semibold shadow-sm"
-      >
-        Add to Cart
-      </button> */}
       </div>
-    </div>
-  </div>
-
-
 
       {showPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
@@ -408,7 +427,6 @@ const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, current
                     alert("Please select or add an address before proceeding.");
                     return;
                   }
-                  // Move to Order Summary step instead of directly to payment
                   setCheckoutStep('orderSummary');
                 }}
                 onBack={handleClosePaymentModal}
@@ -421,14 +439,12 @@ const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, current
                   ...product.productId,
                   name: product.productId.title,
                   signedImages: [signedUrls[product.productId._id]],
-                  productPrice: product.productPrice // Pass the product price properly
+                  productPrice: product.productPrice
                 }}
                 quantity={selectedQuantity}
                 selectedAddress={selectedAddress}
                 onPlaceOrder={(orderDetails) => {
-                  // Update the payment amount if needed based on order summary calculation
                   setPaymentAmount(orderDetails.amount);
-                  // Proceed to the payment gateway step
                   setCheckoutStep('payment');
                 }}
                 onBack={() => setCheckoutStep('address')}

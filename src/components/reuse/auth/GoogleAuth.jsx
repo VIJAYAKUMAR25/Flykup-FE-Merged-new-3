@@ -100,10 +100,9 @@ import axiosInstance from "../../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../context/AuthContext";
 
-const GoogleAuth = () => {
+const GoogleAuth = ({ isModal = false }) => {
   const [error, setError] = useState("");
   const { setUser, saveTokens } = useAuth();
-
   const navigate = useNavigate();
 
   const handleSuccess = (credentialResponse) => {
@@ -112,7 +111,7 @@ const GoogleAuth = () => {
       const userDetails = parseJwt(credentialResponse.credential);
 
       // Send the user data to the backend
-      sendDataToBackend(userDetails, navigate);
+      sendDataToBackend(userDetails);
     } catch (error) {
       setError("Failed to process login response");
       console.error(error);
@@ -122,7 +121,9 @@ const GoogleAuth = () => {
   const handleError = () => {
     console.error("Google Login Failed");
     setError("Authentication failed. Please try again.");
-    toast.error("Google Login Failed. Please try again.");
+    if (!isModal) {
+      toast.error("Google Login Failed. Please try again.");
+    }
   };
 
   const parseJwt = (token) => {
@@ -134,7 +135,7 @@ const GoogleAuth = () => {
     }
   };
 
-  const sendDataToBackend = async (userDetails, navigate) => {
+  const sendDataToBackend = async (userDetails) => {
     try {
       // Step 1: Send user details to the backend for authentication
       const response = await axiosInstance.post(GOOGLE_AUTH, {
@@ -151,33 +152,44 @@ const GoogleAuth = () => {
         // Save tokens to localStorage
         saveTokens(data.accessToken, data.refreshToken);
         setUser(data.data); // Set user after saving tokens
-        navigate("/profile");
-        toast.success("Login successful!"); // Success toast
+        
+        // Only navigate if not in modal
+        if (!isModal) {
+          navigate("/user");
+          toast.success("Login successful!"); // Success toast only for non-modal
+        }
+        // If modal, the parent component (AuthModal) will handle the success
       } else {
-        toast.error(data.message || "Login failed. Please try again."); // Handle backend specific error messages
+        if (!isModal) {
+          toast.error(data.message || "Login failed. Please try again.");
+        }
+        setError(data.message || "Login failed. Please try again.");
       }
     } catch (error) {
       console.error("Google login failed:", error);
-      toast.error("Login failed. Please try again.");
+      const errorMessage = "Login failed. Please try again.";
+      if (!isModal) {
+        toast.error(errorMessage);
+      }
+      setError(errorMessage);
     }
   };
 
   return (
-    <div className="flex justify-center items-center w-full"> {/* Ensure parent div is full width */}
-      <div className="relative w-full"> {/* Make this div full width too */}
+    <div className="flex justify-center items-center w-full">
+      <div className="relative w-full">
         <GoogleLogin
           onSuccess={handleSuccess}
           onError={handleError}
-          useOneTap
+          useOneTap={!isModal} // Disable oneTap in modal to avoid conflicts
           text="signin_with"
           shape="pill"
-          theme="outline" // Dark theme
-          size="large" // Large size for better visibility
-          className="rounded-xl w-full" // Apply w-full directly to the button
-          width="auto" // Set width to auto, then control with CSS (className)
+          theme="outline"
+          size="large"
+          className="rounded-xl w-full"
+          width="auto"
         />
-        {/* You can add error display here if needed */}
-        {error && <p className="text-red-500 text-center mt-2">{error}</p>}
+        {error && <p className={`${isModal ? 'text-red-400' : 'text-red-500'} text-center mt-2`}>{error}</p>}
       </div>
     </div>
   );

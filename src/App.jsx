@@ -17,6 +17,8 @@ import { AlertsContainer } from "./components/Alerts/AlertContainer.jsx"; // Adj
 import { FaSpinner } from "react-icons/fa"; // For a loading spinner
 import { useAuth } from "./context/AuthContext.jsx";
 import FlykupLoader from "./components/resources/FlykupLoader.jsx";
+import ShowDetailsPage from "./components/shows/ShowDetailsPage.jsx";
+import PublicWithAuthGate from "./PublicWithAuthGate.jsx";
 // This component contains the core app logic and routes,
 // and can safely use router and auth hooks.
 function AppContentWrapper() {
@@ -49,6 +51,14 @@ const isSelectCategoriesPage = location.pathname === '/select-categories';
   return (
     <div className="font-montserrat "> 
       <Routes>
+         <Route
+          path="/user/show/:id"
+          element={
+            <PublicWithAuthGate
+              element={<ShowDetailsPage />}
+            />
+          }
+        />
         <Route
           path="/auth/*"
           element={<AuthLayout inputData={inputData} setInputData={setInputData} />}

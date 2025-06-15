@@ -31,13 +31,11 @@ const BuyProductsSellers = ({ showId, streamId, product, signedUrls, fetchShow, 
     return (
         <div className="card w-full max-w-lg bg-stone-950 shadow-xl rounded-2xl p-4 space-y-4 ">
 
-            <div className="flex items-center space-x-4 bg-stone-900 p-4 rounded-lg">
-                <img src={signedUrls[product?.productId?._id] || "/placeholder.svg"} className="w-20 h-20 object-contain" alt={product?.productId?.title} />
-                <div>
-                    <h4 className="text-xl font-bold text-white">{product?.productId?.title}</h4>
-                    <p className="text-gray-300 text-sm line-clamp-2">{product?.productId?.description}</p>
-                </div>
+          <div className="flex items-center bg-stone-900 p-2 rounded-lg">
+                <img src={signedUrls[product?.productId?._id] || "/placeholder.svg"} className="w-10 h-10 object-contain rounded-full" alt={product?.productId?.title} />
+                <h4 className="text-base font-semibold text-white ml-2 truncate">{product?.productId?.title}</h4>
             </div>
+
 
 
             <div className="hidden justify-end gap-4 mb-2">

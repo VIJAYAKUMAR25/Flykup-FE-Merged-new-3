@@ -1,31 +1,32 @@
+// GiveawayUsers.jsx
 import React, { useEffect, useState } from "react";
-import io from "socket.io-client";
+// import io from "socket.io-client"; // REMOVE THIS LINE
 import config from "../api/config";
-import Confetti from "react-confetti";
+// import Confetti from "react-confetti"; // Confetti is in ShowDetailsPage now
 import AnimatedRollingDisplay from "./AnimatedRollingDisplay";
 import { toast } from "react-toastify";
 
-const socket = io.connect(config.backendUrl, {
-    transports: ['websocket'], // Force WebSocket transport
-  });
-const GiveawayUsers = ({ onWinner }) => {
+// REMOVE the global socket instance here
+// const socket = io.connect(config.backendUrl, {
+//     transports: ['websocket'],
+//   });
+
+// Accept 'socket' as a prop
+const GiveawayUsers = ({ onWinner, socket }) => { 
     const [giveaway, setGiveaway] = useState(null);
     const [isRolling, setIsRolling] = useState(false);
     const [rollingWinner, setRollingWinner] = useState(null);
-    const [showTermsModal, setShowTermsModal] = useState(false); // New state for Terms Modal
-    const [showPackageDetails, setShowPackageDetails] = useState(false); // For package details modal
+    const [showTermsModal, setShowTermsModal] = useState(false); 
+    const [showPackageDetails, setShowPackageDetails] = useState(false); 
 
-    // Retrieve the current user from localStorage
     const storedUser = localStorage.getItem("userData");
     const user = storedUser ? JSON.parse(storedUser) : null;
-    console.log("user:", user);
+    // console.log("user:", user);
 
     if (user) {
-        // Set the id property to be the value of _id
-        user.id = user._id;
-        console.log("Updated user:", user);
+        user.id = user._id; // Ensure user has an 'id' property consistent with _id
+        // console.log("Updated user:", user);
     }
-
 
     // On mount, fetch the active giveaway from the API
     useEffect(() => {
@@ -46,6 +47,12 @@ const GiveawayUsers = ({ onWinner }) => {
     }, []);
 
     useEffect(() => {
+        // Only attach listeners if the socket instance is available
+        if (!socket) {
+            console.log("GiveawayUsers: Socket not available for listeners.");
+            return;
+        }
+
         const handleGiveawayStarted = (data) => {
             console.log("Giveaway started:", data);
             setGiveaway(data);
@@ -53,12 +60,12 @@ const GiveawayUsers = ({ onWinner }) => {
 
         const handleApplicantsUpdated = (data) => {
             console.log("Applicants updated:", data);
-            setGiveaway(data);
+            // This assumes 'data' is the full giveaway object, adjust if it's just applicants
+            setGiveaway(data); 
         };
 
         const handleGiveawayWinner = (data) => {
             console.log("Giveaway winner event received:", data);
-            // Start rolling effect for 7 seconds
             if (data.applicants && data.applicants.length > 0) {
                 setIsRolling(true);
                 const intervalId = setInterval(() => {
@@ -71,84 +78,77 @@ const GiveawayUsers = ({ onWinner }) => {
                     clearInterval(intervalId);
                     setIsRolling(false);
                     setRollingWinner(null);
-                    // Now reveal the actual winner
-                    setGiveaway(data);
+                    setGiveaway(data); // Finally reveal the actual winner
                     const currentWinner = data.winner;
-                    if (
-                        currentWinner &&
-                        user &&
-                        (currentWinner.id === user.id || currentWinner._id === user.id)
-                    ) {
-                        onWinner(true);
+                    if (currentWinner && user && (currentWinner.id === user.id || currentWinner._id === user.id)) {
+                        onWinner(true); // Notify parent (ShowDetailsPage) for confetti
                     }
                 }, 7000);
             } else {
                 setGiveaway(data);
-                if (
-                    data.winner &&
-                    user &&
-                    (data.winner.id === user.id || data.winner._id === user.id)
-                ) {
+                if (data.winner && user && (data.winner.id === user.id || data.winner._id === user.id)) {
                     onWinner(true);
                 }
             }
         };
 
+        const handleClearGiveawaySuccess = (data) => {
+            toast.success(data.message);
+            setGiveaway(null);
+            onWinner(false); // Clear winner state in parent
+        };
+
         socket.on("giveawayStarted", handleGiveawayStarted);
         socket.on("giveawayApplicantsUpdated", handleApplicantsUpdated);
         socket.on("giveawayWinner", handleGiveawayWinner);
-        // Listen for clear giveaway success event
-        socket.on("clearGiveawaySuccess", (data) => {
-            toast.success(data.message);
-            // Clear the giveaway state or update it accordingly
-            setGiveaway(null);
-            onWinner(false);
-        });
+        socket.on("clearGiveawaySuccess", handleClearGiveawaySuccess);
 
+        // Cleanup function for socket listeners
         return () => {
             socket.off("giveawayStarted", handleGiveawayStarted);
             socket.off("giveawayApplicantsUpdated", handleApplicantsUpdated);
-            socket.off("clearGiveawaySuccess");
             socket.off("giveawayWinner", handleGiveawayWinner);
+            socket.off("clearGiveawaySuccess", handleClearGiveawaySuccess);
         };
-    }, [onWinner, user]);
+    }, [socket, onWinner, user]); // Add 'socket' to dependencies
 
-    // Handler for when a user clicks "Join Giveaway"
     const handleJoinGiveaway = () => {
         if (!giveaway || !user) {
             console.log("No giveaway or user found.");
+            toast.error("Please log in or wait for an active giveaway.");
             return;
         }
-        // Check if the user has already joined (check both id and _id)
+        
+        // Ensure that `giveaway.applicants` is an array of objects with _id or id
         const alreadyJoined =
             giveaway.applicants &&
             giveaway.applicants.some(
-                (app) => app?.id === user.id || app?._id === user.id
+                (applicant) => applicant === user.id || (applicant && applicant._id === user.id) // check for populated object or just ID string
             );
+        
         if (alreadyJoined) {
-            alert("You have already joined this giveaway.");
+            toast.info("You have already joined this giveaway.");
             return;
         }
-        // Open terms and conditions modal before joining
         setShowTermsModal(true);
     };
 
-    // Handler for accepting the terms and conditions
     const handleAcceptTerms = () => {
         setShowTermsModal(false);
-        // Emit join giveaway event after accepting terms
+        if (!socket) {
+            toast.error("Socket not connected. Cannot join giveaway.");
+            return;
+        }
         console.log("Emitting applyGiveaway with user:", user);
         socket.emit("applyGiveaway", { user });
         toast.success("You have successfully joined the giveaway.");
     };
 
-    // Handler for declining the terms and conditions
     const handleDeclineTerms = () => {
         setShowTermsModal(false);
         toast.info("You must accept the terms and conditions to join the giveaway.");
     };
 
-    // Check if the current user is the winner.
     const isWinner =
         giveaway &&
         giveaway.winner &&
@@ -182,25 +182,22 @@ const GiveawayUsers = ({ onWinner }) => {
                                     className="btn btn-success"
                                     onClick={handleJoinGiveaway}
                                     disabled={
-                                        !user ||
+                                        !user || // Disable if no user logged in
                                         (giveaway.applicants &&
                                             giveaway.applicants.some(
-                                                (app) =>
-                                                    app?.toString() === user.id || app?._id === user.id
+                                                (applicant) => applicant === user.id || (applicant && applicant._id === user.id)
                                             ))
                                     }
                                 >
                                     {(giveaway.applicants &&
                                         giveaway.applicants.some(
-                                            (app) =>
-                                                app?.toString() === user.id || app?._id === user.id
+                                            (applicant) => applicant === user.id || (applicant && applicant._id === user.id)
                                         ))
                                         ? "Joined"
                                         : "Join Giveaway"}
                                 </button>
                             </div>}
                     </div>
-                    {/* {isWinner && <Confetti width={width} height={height} />} */}
                 </div>
             ) : (
                 <p className="text-center text-gray-500">
@@ -208,7 +205,6 @@ const GiveawayUsers = ({ onWinner }) => {
                 </p>
             )}
 
-            {/* Clickable text for Package Details */}
             {giveaway &&
                 <div className="text-center mt-4">
                     <span
@@ -219,7 +215,6 @@ const GiveawayUsers = ({ onWinner }) => {
                     </span>
                 </div>}
 
-            {/* Terms and Conditions Modal */}
             {showTermsModal && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
                     <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full ">
@@ -238,7 +233,11 @@ const GiveawayUsers = ({ onWinner }) => {
                             Must register on <span className="font-semibold hover:text-blue-500 cursor-pointer"
                                 onClick={() =>
                                     window.open("https://flykup.in/", "_blank", "noopener,noreferrer")
-                                }>Flykup</span> and join the giveaway.
+                                }
+                            >
+                                Flykup
+                            </span>{" "}
+                            and join the giveaway.
                             <br /><br />
                             <strong>2. Giveaway Details:</strong>
                             <br />
@@ -293,7 +292,6 @@ const GiveawayUsers = ({ onWinner }) => {
                 </div>
             )}
 
-            {/* Package Details Modal (without Accept button, closes on outside click) */}
             {showPackageDetails && (
                 <div
                     onClick={() => setShowPackageDetails(false)}
@@ -361,7 +359,6 @@ const GiveawayUsers = ({ onWinner }) => {
                     </div>
                 </div>
             )}
-
         </div>
     );
 };

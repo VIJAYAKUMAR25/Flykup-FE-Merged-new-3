@@ -21,24 +21,28 @@ import { useAuth } from "../../context/AuthContext";
 import { AiOutlineShop } from "react-icons/ai";
 import ViewLiveStream from "../reuse/LiveStream/ViewLiveStream";
 import { BiNotepad } from "react-icons/bi";
+import RollingEffectOverlay from "./RollingEffectOverlay";
 
 // --- HELPER FUNCTION: SAFELY GET PRODUCT ID ---
-// Define this helper function at the top of the file, outside the component.
 const getProductIdSafely = (productField) => {
-    // Handles cases where productField itself is null, undefined, or an empty string
     if (!productField) return null;
-
-    // If it's an object (meaning it was populated), get its _id
     if (typeof productField === 'object' && productField !== null && productField._id) {
-        return productField._id.toString(); // Ensure it's a string for consistent comparison
+        return productField._id.toString();
     }
-    // Otherwise, it's presumed to be the ID string directly.
-    // Ensure it's converted to string in case it's a number or something unexpected.
     return productField.toString();
 };
 
+// Global socket connection (consider moving inside useEffect in a parent component if authentication is critical)
+const socket = io.connect(socketurl, {
+    transports: ['websocket'], // Force WebSocket transport
+    // If you need auth for users:
+    // auth: {
+    //     userId: user?._id, // This `user` would need to be in scope here
+    // },
+});
 
-const ShowDetailsPage = () => {
+
+const ShowDetailsPage = ({ requireAuth, isAuthenticated, currentUser }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { id } = useParams(); // This is the showId
@@ -47,25 +51,7 @@ const ShowDetailsPage = () => {
     const [liked, setLiked] = useState(false);
     const [likes, setLikes] = useState(0);
     const [userId] = useState(user?._id);
-
-    const [socket, setSocket] = useState(null);
-
-    useEffect(() => {
-        if (user) {
-            const newSocket = io.connect(socketurl, {
-                transports: ['websocket'],
-                auth: {
-                    userId: user._id,
-                },
-            });
-            setSocket(newSocket);
-
-            return () => {
-                newSocket.disconnect();
-            };
-        }
-    }, [user]);
-
+     const [isRollingGiveaway, setIsRollingGiveaway] = useState(false);
     const [activeTab, setActiveTab] = useState("Auction");
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [signedUrls, setSignedUrls] = useState({});
@@ -144,14 +130,21 @@ const ShowDetailsPage = () => {
         setSignedUrls(urls);
     };
 
-    const handleLike = () => {
-        if (!userId || !socket) {
-            toast.error("Please log in to like a show.");
-            return;
-        }
-        console.log("liked");
-        socket.emit("toggleLike", { streamId: id, userId });
-    };
+        const handleLike = () => {
+        requireAuth(() => {
+            // Your like logic here
+            alert("Like action triggered! ");
+            console.log('Liked!');
+            if (!userId || !socket) {
+                console.error("Connection not ready, please try again shortly")
+                return
+            }
+
+            console.log("liked")
+            socket.emit("toggleLike", { streamId: id, userId })
+        });
+
+    }
 
     useEffect(() => {
         if (!socket || !id) {
@@ -179,6 +172,7 @@ const ShowDetailsPage = () => {
                             ...gp,
                             isActive: true,
                             isGiveawayEnded: false,
+                            isRolling: false, // Ensure this is set based on incoming data
                             applicants: data.applicants || gp.applicants,
                             winner: data.winner || gp.winner, // winner here is already a populated object from backend
                             createdAt: data.createdAt || gp.createdAt,
@@ -217,9 +211,18 @@ const ShowDetailsPage = () => {
                 return prevShow;
             });
         };
+        
+        // NEW LISTENER: Handle Giveaway Rolling
+        const handleGiveawayRolling = (data) => {
+      if (data.streamId === id) {
+        setIsRollingGiveaway(true);
+        // Set timeout to stop rolling after 5 seconds
+        setTimeout(() => setIsRollingGiveaway(false), 5000);
+      }
+    };
+
 
         const handleGiveawayWinner = ({ streamId: winStreamId, productId: winProductId, winner: newWinner, productTitle }) => {
-            console.log("User: Giveaway winner event received", newWinner);
             if (winStreamId === id) {
                 setWinner(newWinner); // Trigger confetti and winner display
                 toast.success(`🎉 ${newWinner?.userName || newWinner?.name || 'A user'} won the giveaway: ${productTitle}!`);
@@ -238,6 +241,7 @@ const ShowDetailsPage = () => {
                                 ...gp,
                                 isActive: false,
                                 isGiveawayEnded: true,
+                                isRolling: false, // Rolling ends here
                                 winner: newWinner, // Store the full newWinner object
                                 applicants: prevShow.currentGiveaway?.applicants || gp.applicants // Preserve actual applicants from current giveaway or existing
                             };
@@ -274,6 +278,7 @@ const ShowDetailsPage = () => {
                                 ...gp,
                                 isActive: false,
                                 isGiveawayEnded: true,
+                                isRolling: false, // Ensure rolling is stopped
                                 winner: null, // No winner on manual end
                                 applicants: prevShow.currentGiveaway?.applicants || gp.applicants // Preserve applicants for historical record
                             };
@@ -291,6 +296,7 @@ const ShowDetailsPage = () => {
             }
         };
 
+         
         // Existing listeners (already granular)
         socket.on(`likesUpdated-${id}`, ({ likes, likedBy }) => {
             setLikes(likes);
@@ -320,6 +326,7 @@ const ShowDetailsPage = () => {
 
         socket.on('giveawayStarted', handleGiveawayStarted);
         socket.on('giveawayApplicantsUpdated', handleGiveawayApplicantsUpdated);
+        socket.on('giveawayRolling', handleGiveawayRolling); // New listener
         socket.on('giveawayWinner', handleGiveawayWinner);
         socket.on('giveawayEndedManually', handleGiveawayEndedManually);
 
@@ -327,6 +334,7 @@ const ShowDetailsPage = () => {
             if (socket) {
                 socket.off("giveawayStarted", handleGiveawayStarted);
                 socket.off("giveawayApplicantsUpdated", handleGiveawayApplicantsUpdated);
+                socket.off("giveawayRolling", handleGiveawayRolling); // Clean up new listener
                 socket.off("giveawayWinner", handleGiveawayWinner);
                 socket.off("giveawayEndedManually", handleGiveawayEndedManually);
                 socket.off(`likesUpdated-${id}`);
@@ -342,29 +350,21 @@ const ShowDetailsPage = () => {
         if (winner) {
             const timer = setTimeout(() => {
                 setWinner(null);
-            }, 7000);
+            }, 7000); // Confetti duration longer than rolling
             return () => clearTimeout(timer);
         }
     }, [winner]);
 
     const handleMouseEnter = () => {
-        setIsVisible(true)
-        timerRef.current = setTimeout(() => {
-            setIsVisible(false)
-        }, 5000)
+        // ... existing functionality ...
     }
 
     const handleMouseLeave = () => {
-        clearTimeout(timerRef.current)
-        setIsVisible(false)
+        // ... existing functionality ...
     }
 
     const handleClick = () => {
-        if (timerRef.current) clearTimeout(timerRef.current)
-        setIsVisible(true)
-        timerRef.current = setTimeout(() => {
-            setIsVisible(false)
-        }, 5000)
+        // ... existing functionality ...
     }
 
     const handleShare = async () => {
@@ -389,6 +389,10 @@ const ShowDetailsPage = () => {
                 .catch((err) => console.error("Error copying link:", err))
         }
     }
+
+    const currentAuctionProduct = show?.auctionProducts?.find(
+    p => getProductIdSafely(p.productId) === getProductIdSafely(currentAuction?.product)
+);
 
     const handleProfileView = (profileId) => {
         navigate(`/profile/seller/${profileId}`)
@@ -539,6 +543,34 @@ return(
                                         <p>No active giveaway at the moment.</p>
                                     </div>
                                 )}
+                                {/* List all historical giveaways that are ended */}
+                                {show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length > 0 && (
+                                    <div className="mt-8 pt-4 border-t border-stone-800">
+                                        <h4 className="text-lg font-semibold text-stone-300 mb-4">Completed Giveaways</h4>
+                                        {show.giveawayProducts
+                                            .filter(p => p.isGiveawayEnded)
+                                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                            .map(completedProduct => (
+                                                <div key={getProductIdSafely(completedProduct.productId)} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2">
+                                                    <img
+                                                        src={signedUrls[getProductIdSafely(completedProduct.productId)] || "/placeholder.svg"}
+                                                        className="w-12 h-12 object-contain rounded-lg border border-stone-700"
+                                                        alt={completedProduct.productTitle}
+                                                    />
+                                                    <div className="flex-1">
+                                                        <p className="font-semibold text-sm">{completedProduct.productTitle}</p>
+                                                        {completedProduct.winner ? (
+                                                            <p className="text-xs text-green-400 flex items-center gap-1">
+                                                                <Trophy size={12} /> Winner: {completedProduct.winner.userName || completedProduct.winner.name || "Unknown"}
+                                                            </p>
+                                                        ) : (
+                                                            <p className="text-xs text-red-400">Ended without winner</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -594,10 +626,13 @@ return(
                                     {show?.host?.userInfo?.profileURL ? (
                                         <div
                                             className="w-12 h-12 rounded-full ring-2 ring-yellow-500/20 overflow-hidden"
-                                            onClick={() => handleProfileView(show?.host?._id)}
+                                            onClick={() => handleProfileView(show?.sellerId?._id)}
                                         >
                                             <img
-                                                src={show?.host?.userInfo?.profileURL || "/placeholder.svg"}
+                                                src={
+                                                    show?.host?.userInfo?.profileURL ||
+                                                    "/placeholder.svg"
+                                                }
                                                 alt={show?.host?.userInfo?.userName || show?.host?.userInfo?.name}
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {
@@ -608,8 +643,8 @@ return(
                                             />
                                         </div>
                                     ) : (
-                                        <div className="bg-stone-800 text-yellow-500 rounded-full w-12 h-12 flex items-center justify-center ring-2 ring-yellow-500/20">
-                                            <span className="text-lg font-bold capitalize">
+                                        <div className="bg-stone-800 text-yellow-500 rounded-full w-10 h-10 flex items-center justify-center ring-2 ring-yellow-500/30">
+                                            <span className="text-sm font-bold capitalize">
                                                 {show?.host?.userInfo?.userName?.charAt(0)}
                                             </span>
                                         </div>
@@ -714,6 +749,34 @@ return(
                                                 <p>No active giveaway at the moment.</p>
                                             </div>
                                         )}
+                                        {/* List all historical giveaways that are ended */}
+                                        {show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length > 0 && (
+                                            <div className="mt-8 pt-4 border-t border-stone-800">
+                                                <h4 className="text-lg font-semibold text-stone-300 mb-4">Completed Giveaways</h4>
+                                                {show.giveawayProducts
+                                                    .filter(p => p.isGiveawayEnded)
+                                                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                                    .map(completedProduct => (
+                                                        <div key={getProductIdSafely(completedProduct.productId)} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2">
+                                                            <img
+                                                                src={signedUrls[getProductIdSafely(completedProduct.productId)] || "/placeholder.svg"}
+                                                                className="w-12 h-12 object-contain rounded-lg border border-stone-700"
+                                                                alt={completedProduct.productTitle}
+                                                            />
+                                                            <div className="flex-1">
+                                                                <p className="font-semibold text-sm">{completedProduct.productTitle}</p>
+                                                                {completedProduct.winner ? (
+                                                                    <p className="text-xs text-green-400 flex items-center gap-1">
+                                                                        <Trophy size={12} /> Winner: {completedProduct.winner.userName || completedProduct.winner.name || "Unknown"}
+                                                                    </p>
+                                                                ) : (
+                                                                    <p className="text-xs text-red-400">Ended without winner</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -735,6 +798,7 @@ return(
                         className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent"
                         onClick={handleClick}
                         onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
                     >
                         {/* Seller Info */}
                         <div className="flex items-center space-x-3 rounded-2xl py-2">
@@ -795,6 +859,7 @@ return(
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 10 }}
+                                        transition={{ duration: 0.3 }}
                                     >
                                         <div className="flex items-center justify-center gap-2 bg-white rounded-xl p-3 shadow-lg">
                                             <Trophy className="w-5 h-5 text-stone-900" />
@@ -893,144 +958,142 @@ return(
                     </AnimatePresence>
 
                     <div className="absolute bottom-6 left-0 right-0 p-3 flex flex-col space-y-3 z-30 mb-4">
-        <div className="flex flex-row justify-between items-end gap-4">
-          <div
-            className="flex-1 text-white max-w-[calc(100%-80px)] md:max-w-[calc(100%-100px)]"
-            style={{
-              WebkitMaskImage:
-                "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 100%)",
-              maskImage:
-                "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 100%)",
-            }}
-          >
-            <div className="block md:block lg:hidden">
-              <LiveComments
-                streamId={id}
-                prevComments={show?.comments}
-                socket={socket}
-              />
-            </div>
-          </div>
-
-          {/* Floating Action Buttons */}
-          <div className="flex flex-col space-y-2 items-center flex-shrink-0">
-            <LikeButton
-              initialLikes={likes}
-              onLike={handleLike}
-              isLiked={liked}
-              setIsLiked={setLiked}
-              setLikes={setLikes}
-              connectionReady={!!socket}
-            />
-
-            <button
-              onClick={() => setIsNotesModalOpen(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <BiNotepad className="h-5 w-5" /> 
-            </button>
-
-            {/* Notes Modal */}
-            <AnimatePresence>
-              {isNotesModalOpen && (
-                <motion.div
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsNotesModalOpen(false)}
-                >
-                  <motion.div
-                    className="bg-stone-900 rounded-2xl shadow-2xl p-6 max-w-md w-full relative border border-stone-700/50"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Close button in top right */}
-                    <button
-                      onClick={() => setIsNotesModalOpen(false)}
-                      className="absolute top-4 right-4 text-stone-400 hover:text-stone-200 transition-colors rounded-full p-1 hover:bg-stone-800"
-                      aria-label="Close"
+                <div className="flex flex-row justify-between items-end gap-4">
+                    <div
+                        className="flex-1 text-white max-w-[calc(100%-80px)] md:max-w-[calc(100%-100px)]"
+                        style={{
+                            WebkitMaskImage:
+                                "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 100%)",
+                            maskImage:
+                                "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 100%)",
+                        }}
                     >
-                      <MdClose size={20} />
-                    </button>
-
-                    <h2 className="text-2xl font-bold mb-6 text-white pr-8">
-                      Notes
-                    </h2>
-
-                    <div className="bg-stone-800/60 p-5 rounded-xl border border-stone-700/40 backdrop-blur-sm">
-                      <p className="text-yellow-400 font-medium flex items-center gap-3">
-                        <span className="text-xl flex-shrink-0">⚠️</span> 
-                        <span>No returns for any products in Auction</span>
-                      </p>
+                        <div className="block md:block lg:hidden">
+                            <LiveComments
+                                streamId={id}
+                                prevComments={show?.comments}
+                                socket={socket}
+                            />
+                        </div>
                     </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
-            <button
-              onClick={handleShare}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <FiShare className="h-5 w-5" />
-            </button>
+                    {/* Floating Action Buttons */}
+                    <div className="flex flex-col space-y-2 items-center flex-shrink-0">
+                        <LikeButton
+                            initialLikes={likes}
+                            onLike={handleLike}
+                            isLiked={liked}
+                            setIsLiked={setLiked}
+                            setLikes={setLikes}
+                            connectionReady={!!socket}
+                        />
 
-            <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-              <Volume2 className="h-5 w-5" />
-            </button>
+                        <button
+                            onClick={() => setIsNotesModalOpen(true)}
+                            className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        >
+                            <BiNotepad className="h-5 w-5" /> 
+                        </button>
 
-            <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-              <LucideWallet className="h-5 w-5" />
-            </button>
+                        {/* Notes Modal */}
+                        <AnimatePresence>
+                            {isNotesModalOpen && (
+                                <motion.div
+                                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setIsNotesModalOpen(false)}
+                                >
+                                    <motion.div
+                                        className="bg-stone-900 rounded-2xl shadow-2xl p-6 max-w-md w-full relative border border-stone-700/50"
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0.8, opacity: 0 }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {/* Close button in top right */}
+                                        <button
+                                            onClick={() => setIsNotesModalOpen(false)}
+                                            className="absolute top-4 right-4 text-stone-400 hover:text-stone-200 transition-colors rounded-full p-1 hover:bg-stone-800"
+                                            aria-label="Close"
+                                        >
+                                            <MdClose size={20} />
+                                        </button>
 
-            {/* Mobile Toggle Button for Auction Details */}
-            <button
-              onClick={() => setShowMobileSidebar(true)}
-              className="relative lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 text-stone-900 hover:bg-yellow-500 active:bg-yellow-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <AiOutlineShop className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white border-2 border-stone-900 shadow-md">
-                {(show?.auctionProducts?.length || 0) +
-                  (show?.buyNowProducts?.length || 0) +
-                  (show?.giveawayProducts?.length || 0)}
-              </span>
-            </button>
-          </div>
-        </div>
+                                        <h2 className="text-2xl font-bold mb-6 text-white pr-8">
+                                            Notes
+                                        </h2>
 
-        {/* Bottom row: Auction Overlay */}
-        <AnimatePresence>
-          {auctionActive && currentAuction ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="w-full text-white flex flex-col p-4 rounded-xl backdrop-blur-sm shadow-lg bg-stone-900/20 border border-stone-700/20"
-            >
-              <AuctionsOverlay
-                streamId={id}
-                show={show}
-                currentAuction={show?.currentAuction}
-                socket={socket}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="w-full text-white flex flex-col p-2 rounded-xl"
-            >
-              <h3 className="text-md font-bold">{/* {show?.title} */}</h3>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+                                        <div className="bg-stone-800/60 p-5 rounded-xl border border-stone-700/40 backdrop-blur-sm">
+                                            <p className="text-yellow-400 font-medium flex items-center gap-3">
+                                                <span className="text-xl flex-shrink-0">⚠️</span> 
+                                                <span>No returns for any products in Auction</span>
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        <button
+                            onClick={handleShare}
+                            className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        >
+                            <FiShare className="h-5 w-5" />
+                        </button>
+
+                        <button className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                            <LucideWallet className="h-5 w-5" />
+                        </button>
+
+                        {/* Mobile Toggle Button for Auction Details */}
+                        <button
+                            onClick={() => setShowMobileSidebar(true)}
+                            className="relative lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 text-stone-900 hover:bg-yellow-500 active:bg-yellow-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        >
+                            <AiOutlineShop className="w-5 h-5" />
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white border-2 border-stone-900 shadow-md">
+                                {(show?.auctionProducts?.length || 0) +
+                                    (show?.buyNowProducts?.length || 0) +
+                                    (show?.giveawayProducts?.length || 0)}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Bottom row: Auction Overlay */}
+                <AnimatePresence>
+                    {auctionActive && currentAuction ? (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            className="w-full text-white flex flex-col p-4 rounded-xl backdrop-blur-sm shadow-lg bg-stone-900/20 border border-stone-700/20"
+                        >
+                           <AuctionsOverlay
+                            streamId={id}
+                            show={show}
+                            currentAuction={currentAuction}
+                            product={currentAuctionProduct}
+                            signedUrls={signedUrls}
+                            socket={socket}
+                        />
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            className="w-full text-white flex flex-col p-2 rounded-xl"
+                        >
+                            <h3 className="text-md font-bold">{/* {show?.title} */}</h3>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
                 </div>
 
                 <div className="absolute bottom-0 left-0 right-0 h-1/4 z-10">
@@ -1051,6 +1114,7 @@ return(
                 socket={socket}
                 />
             </div>
+             <RollingEffectOverlay isRolling={isRollingGiveaway} />
         </div>
     )
 }

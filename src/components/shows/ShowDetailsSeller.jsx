@@ -997,6 +997,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import StartStream from "../reuse/LiveStream/StartStream";
 
 import GiveAwaySellerControl from "./GiveAway";
+import RollingEffectOverlay from "./RollingEffectOverlay";
 
 const getProductIdSafely = (productField) => {
     if (!productField) return null; // Handles null/undefined productField itself
@@ -1019,7 +1020,7 @@ const ShowDetailsSeller = () => {
     const [liked, setLiked] = useState(false);
     const [likes, setLikes] = useState(0);
     const [userId] = useState(user?._id);
-
+ const [isRollingGiveaway, setIsRollingGiveaway] = useState(false);
     const [signedUrls, setSignedUrls] = useState({});
     const [activeTab, setActiveTab] = useState("Auction");
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -1279,6 +1280,13 @@ const ShowDetailsSeller = () => {
             toast.warn(data.message);
         };
 
+         const handleGiveawayRolling = (data) => {
+            if (data.streamId === showId) {
+                setIsRollingGiveaway(true);
+                // Set timeout to stop rolling after 5 seconds
+                setTimeout(() => setIsRollingGiveaway(false), 5000);
+            }
+            };
         socket.on(`likesUpdated-${showId}`, handleLikesUpdate);
         socket.on(`viewerCountUpdate-${showId}`, handleViewerCountUpdate);
         socket.on('giveawayStarted', handleGiveawayStarted);
@@ -1286,7 +1294,7 @@ const ShowDetailsSeller = () => {
         socket.on('giveawayWinner', handleGiveawayWinner);
         socket.on('giveawayEndedManually', handleGiveawayEndedManually);
         socket.on('giveawayAlreadyActive', handleGiveawayAlreadyActive);
-
+        socket.on('giveawayRolling', handleGiveawayRolling);
 
         return () => {
             if (socket) {
@@ -1297,6 +1305,7 @@ const ShowDetailsSeller = () => {
                 socket.off('giveawayWinner', handleGiveawayWinner);
                 socket.off('giveawayEndedManually', handleGiveawayEndedManually);
                 socket.off('giveawayAlreadyActive', handleGiveawayAlreadyActive);
+                 socket.off('giveawayRolling', handleGiveawayRolling);
             }
         };
     }, [socket, showId, userId]);
@@ -1880,6 +1889,7 @@ const ShowDetailsSeller = () => {
                 </div>
 
             </div>
+             <RollingEffectOverlay isRolling={isRollingGiveaway} />
         </div>
     );
 };

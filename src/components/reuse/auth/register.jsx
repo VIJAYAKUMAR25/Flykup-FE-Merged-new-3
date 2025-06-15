@@ -381,7 +381,7 @@ import AuthContainer from "./AuthContainer";
 import { SIGNUP } from "../../api/apiDetails";
 import axiosInstance from "../../../utils/axiosInstance";
 
-const Register = ({ inputData, setInputData }) => {
+const Register = ({ inputData, setInputData, onViewChange, isModal = false }) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -510,7 +510,11 @@ const Register = ({ inputData, setInputData }) => {
           email: formData.email,
         }));
 
-        navigate("/auth/verify-email");
+        if (isModal && onViewChange) {
+          onViewChange('otp');
+        } else {
+          navigate("/auth/verify-email");
+        }
       } catch (error) {
         console.error("Registration error:", error);
         setErrors((prev) => ({
@@ -525,22 +529,32 @@ const Register = ({ inputData, setInputData }) => {
     }
   };
 
+  const handleLoginClick = () => {
+    if (isModal && onViewChange) {
+      onViewChange('login');
+    } else {
+      navigate("/auth/login-email");
+    }
+  };
+
   return (
-    <div className="w-full bg-blackLight">
-      <div className="min-h-full w-full md:w-[500px] sm:w-[320px] bg-transparant flex justify-center p-1">
+    <div className="w-full">
+      <div className={`min-h-full w-full flex justify-center p-1 ${isModal ? 'bg-transparent' : 'bg-blackLight'}`}>
         <div className="w-full max-w-sm rounded-lg">
           
-          <div className="relative flex pb-3">
-            <Link to="/auth/" className="absolute left-0 pt-3 flex items-center text-newYellow hover:text-amber-300 transition-transform duration-300 hover:animate-pulse hover:-translate-x-2">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex-1 text-center">
-              <h1 className="text-3xl font-thin text-whiteLight tracking-widest">
-                SIGN<span className="font-black text-newYellow">UP</span>
-              </h1>
-              <div className="w-24 h-px bg-gradient-to-r from-transparent via-newYellow to-transparent mx-auto"></div>
+          {!isModal && (
+            <div className="relative flex pb-3">
+              <Link to="/auth/" className="absolute left-0 pt-3 flex items-center text-newYellow hover:text-amber-300 transition-transform duration-300 hover:animate-pulse hover:-translate-x-2">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <div className="flex-1 text-center">
+                <h1 className="text-3xl font-thin text-whiteLight tracking-widest">
+                  SIGN<span className="font-black text-newYellow">UP</span>
+                </h1>
+                <div className="w-24 h-px bg-gradient-to-r from-transparent via-newYellow to-transparent mx-auto"></div>
+              </div>
             </div>
-          </div>
+          )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
             {errors.general && (
@@ -564,8 +578,8 @@ const Register = ({ inputData, setInputData }) => {
                   value={formData.fullName}
                   onChange={handleInputChange}
                   placeholder=""
-                  className={`peer w-full px-4 py-2 border-2 rounded-lg bg-blackLight
-                    backdrop-blur-sm placeholder-transparent text-whiteLight font-semibold
+                  className={`peer w-full px-4 py-2 border-2 rounded-lg ${isModal ? 'bg-gray-700 text-white' : 'bg-blackLight text-whiteLight'}
+                    backdrop-blur-sm placeholder-transparent font-semibold
                     ${errors.fullName ? "border-red-400" : "border-gray-200"}
                     focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/20
                     transition-all duration-200`}
@@ -595,9 +609,9 @@ const Register = ({ inputData, setInputData }) => {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="ggrtgrt"
-                  className={`peer w-full px-4 py-2 border-2 rounded-lg bg-blackLight
-                    backdrop-blur-sm placeholder-transparent text-whiteLight font-semibold
+                  placeholder=""
+                  className={`peer w-full px-4 py-2 border-2 rounded-lg ${isModal ? 'bg-gray-700 text-white' : 'bg-blackLight text-whiteLight'}
+                    backdrop-blur-sm placeholder-transparent font-semibold
                     ${errors.email ? "border-red-400" : "border-gray-200"}
                     focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/20
                     transition-all duration-200`}
@@ -629,8 +643,8 @@ const Register = ({ inputData, setInputData }) => {
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder=" "
-                  className={`peer w-full px-4 py-2 border-2 rounded-lg bg-blackLight
-                    backdrop-blur-sm placeholder-transparent text-whiteLight font-semibold
+                  className={`peer w-full px-4 py-2 border-2 rounded-lg ${isModal ? 'bg-gray-700 text-white' : 'bg-blackLight text-whiteLight'}
+                    backdrop-blur-sm placeholder-transparent font-semibold
                     ${errors.password ? "border-red-400" : "border-gray-200"}
                     focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/20
                     transition-all duration-200`}
@@ -676,8 +690,8 @@ const Register = ({ inputData, setInputData }) => {
                   value={formData.reenterPassword}
                   onChange={handleInputChange}
                   placeholder=" "
-                  className={`peer w-full px-4 py-2 border-2 rounded-lg bg-blackLight
-                    backdrop-blur-sm placeholder-transparent text-whiteLight font-semibold
+                  className={`peer w-full px-4 py-2 border-2 rounded-lg ${isModal ? 'bg-gray-700 text-white' : 'bg-blackLight text-whiteLight'}
+                    backdrop-blur-sm placeholder-transparent font-semibold
                     ${
                       errors.reenterPassword
                         ? "border-red-400"
@@ -729,12 +743,16 @@ const Register = ({ inputData, setInputData }) => {
             </button>
 
             <div className="text-center">
-              <span className="text-sm text-gray-200">
+              <span className={`text-sm ${isModal ? 'text-gray-300' : 'text-gray-200'}`}>
                 Already have an account?{" "}
               </span>
-              <Link to={"/auth/login-email"} className="text-sm text-newYellow hover:text-blue-600">
+              <button
+                type="button"
+                onClick={handleLoginClick}
+                className="text-sm text-newYellow hover:text-blue-600"
+              >
                 Sign In
-              </Link>
+              </button>
             </div>
           </form>
         </div>

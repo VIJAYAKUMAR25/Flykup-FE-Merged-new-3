@@ -1,14 +1,17 @@
+// GiveawayAdmin.jsx
 import React, { useEffect, useState } from "react";
-import io from "socket.io-client";
+// import io from "socket.io-client"; // REMOVE THIS LINE
 import config from "../api/config";
 import { toast } from "react-toastify";
 import AnimatedRollingDisplay from "./AnimatedRollingDisplay";
 
-const socket = io.connect(config.backendUrl, {
-  transports: ['websocket'], // Force WebSocket transport
-});
+// REMOVE the global socket instance here
+// const socket = io.connect(config.backendUrl, {
+//   transports: ['websocket'],
+// });
 
-const GiveawayAdmin = () => {
+// Accept 'socket' as a prop
+const GiveawayAdmin = ({ socket }) => { 
   const [modalOpen, setModalOpen] = useState(false);
   const [clearModalOpen, setClearModalOpen] = useState(false);
   const [productTitle, setProductTitle] = useState("");
@@ -36,6 +39,12 @@ const GiveawayAdmin = () => {
 
   // Listen for giveaway events from the server
   useEffect(() => {
+    // Only attach listeners if the socket instance is available
+    if (!socket) {
+      console.log("GiveawayAdmin: Socket not available for listeners.");
+      return;
+    }
+
     socket.on("giveawayStarted", (data) => {
       console.log("Giveaway started:", data);
       setGiveaway(data);
@@ -50,7 +59,6 @@ const GiveawayAdmin = () => {
 
     socket.on("giveawayWinner", (data) => {
       if (giveaway && data.giveawayKey === giveaway.giveawayKey) {
-        // If there are applicants, start the rolling effect for 7 seconds
         if (data.applicants && data.applicants.length > 0) {
           setIsRolling(true);
           const intervalId = setInterval(() => {
@@ -65,7 +73,6 @@ const GiveawayAdmin = () => {
             clearInterval(intervalId);
             setIsRolling(false);
             setRollingWinner(null);
-            // Finally reveal the winner and update the giveaway state
             setGiveaway((prev) => ({
               ...prev,
               winner: data.winner,
@@ -82,18 +89,16 @@ const GiveawayAdmin = () => {
       }
     });
 
-    // Listen for clear giveaway success event
     socket.on("clearGiveawaySuccess", (data) => {
       toast.success(data.message);
-      // Clear the giveaway state or update it accordingly
       setGiveaway(null);
     });
 
-    // Listen for any giveaway errors
     socket.on("giveawayError", (data) => {
       toast.error(data.message);
     });
 
+    // Cleanup function: remove event listeners when component unmounts or dependencies change
     return () => {
       socket.off("giveawayStarted");
       socket.off("giveawayApplicantsUpdated");
@@ -101,12 +106,15 @@ const GiveawayAdmin = () => {
       socket.off("clearGiveawaySuccess");
       socket.off("giveawayError");
     };
-  }, [giveaway]);
+  }, [socket, giveaway]); // Add 'socket' to dependencies
 
   // Handler to start a giveaway.
-  // A unique productId is generated using Date.now()
   const handleStartGiveaway = (e) => {
     e.preventDefault();
+    if (!socket) {
+        toast.error("Socket not connected.");
+        return;
+    }
     const productId = Date.now().toString();
     socket.emit("startGiveaway", { productId, productTitle });
     toast.success("Giveaway started successfully!");
@@ -117,11 +125,19 @@ const GiveawayAdmin = () => {
   // Handler to roll and select the winner.
   const handleRollWinner = () => {
     if (!giveaway) return;
+    if (!socket) {
+        toast.error("Socket not connected.");
+        return;
+    }
     socket.emit("rollAndSelectGiveaway");
   };
 
   // Handler for confirming the clear giveaway action
   const handleClearGiveawayYes = () => {
+    if (!socket) {
+        toast.error("Socket not connected.");
+        return;
+    }
     socket.emit("clearExistingGiveaway");
     setClearModalOpen(false);
   };
@@ -144,7 +160,6 @@ const GiveawayAdmin = () => {
         </button>
       </div>
 
-      {/* Modal for starting a giveaway */}
       {modalOpen && (
         <div className="modal modal-open">
           <div className="modal-box relative">
@@ -184,7 +199,6 @@ const GiveawayAdmin = () => {
         </div>
       )}
 
-      {/* Modal for clearing giveaway */}
       {clearModalOpen && (
         <div className="modal modal-open">
           <div className="modal-box relative">
@@ -209,7 +223,6 @@ const GiveawayAdmin = () => {
         </div>
       )}
 
-      {/* Display Giveaway Details */}
       {giveaway ? (
         <div className="card w-full bg-gray-950/60 rounded-b-3xl backdrop-blur-lg shadow-xl mt-6">
           <div className="card-body">

@@ -73,26 +73,30 @@ const ShowsFeed = ({ totalShows, shows, userInfo, sellerInfo, hostId }) => {
     );
   };
 
+  // Helper function to get AWS image URL
+  const getImageUrl = (imageKey) => {
+    if (!imageKey) return "";
+    const cdnUrl = import.meta.env.VITE_AWS_CDN_URL || "https://d2jp9e7w3mhbvf.cloudfront.net/";
+    return `${cdnUrl}${imageKey}`;
+  };
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, index) => (
+      <div className="min-h-screen bg-blackDark px-4 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+          {[...Array(6)].map((_, index) => (
             <div
               key={index}
-              className="card bg-base-100 shadow-xl animate-pulse"
+              className="bg-blackLight rounded-2xl overflow-hidden animate-pulse border border-blackLight"
             >
-              <figure className="h-48 bg-gray-300"></figure>
-              <div className="card-body p-4">
-                <div className="flex items-center gap-2">
-                  <div className="avatar placeholder">
-                    <div className="w-10 h-10 rounded-full bg-gray-300"></div>
-                  </div>
-                  <div className="h-4 bg-gray-300 rounded w-24"></div>
+              <div className="aspect-[16/10] bg-blackLight"></div>
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-blackLight rounded w-3/4"></div>
+                <div className="h-3 bg-blackLight rounded w-1/2"></div>
+                <div className="flex gap-2">
+                  <div className="h-6 bg-blackLight rounded-full w-16"></div>
+                  <div className="h-6 bg-blackLight rounded-full w-20"></div>
                 </div>
-                <div className="h-5 bg-gray-300 rounded w-3/4 mt-2"></div>
-                <div className="h-4 bg-gray-300 rounded w-1/2 mt-1"></div>
               </div>
             </div>
           ))}
@@ -103,122 +107,59 @@ const ShowsFeed = ({ totalShows, shows, userInfo, sellerInfo, hostId }) => {
 
   if (showsList.length === 0) {
     return (
-      <div className="hero min-h-screen bg-base-200">
-        <div className="hero-content text-center">
-          <div className="max-w-md">
-            <h1 className="text-2xl font-bold text-base-content">
-              No Shows Available
-            </h1>
-            <p className="py-6">
-              Currently there are no shows available. Please check back later.
-            </p>
-          </div>
+      <div className="min-h-screen bg-blackDark flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-whiteLight mb-4">
+            No Shows Available
+          </h1>
+          <p className="text-whiteHalf">
+            Currently there are no shows available. Please check back later.
+          </p>
         </div>
       </div>
     );
-  }
-
-  const handleProfileView = (id) => {
-    navigate(`/user/${userInfo?.userName}`);
   };
 
   return (
-    <div className="p-2">
+    <div className="min-h-screen  px-4 py-6">
       {/* Tabs for filtering */}
-      <div className="flex justify-center mb-6 bg-newWhite rounded-lg p-1 shadow-sm mx-auto max-w-md">
-        <button
-          onClick={() => setActiveTab("all")}
-          className={`px-4 py-2 font-medium text-sm md:text-base rounded-lg transition-all duration-300 flex items-center justify-center flex-1 ${
-            activeTab === "all"
-              ? "bg-white text-blue-600 shadow-sm"
-              : "text-gray-600 hover:bg-gray-100"
-          }`}
-        >
-          <svg
-            className="w-4 h-4 mr-1"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+      <div className="flex justify-center mb-8">
+        <div className="bg-blackDark/80 backdrop-blur-sm rounded-full p-1 flex gap-1 border border-blackLight">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`px-6 py-2 font-medium text-sm rounded-full transition-all duration-300 ${
+              activeTab === "all"
+                ? "bg-newYellow text-blackDark font-bold"
+                : "text-whiteHalf hover:text-newYellow"
+            }`}
           >
-            <path
-              d="M4 6H20M4 12H20M4 18H20"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          All Shows
-        </button>
-        <button
-          onClick={() => setActiveTab("live")}
-          className={`px-4 py-2 font-medium text-sm md:text-base rounded-lg transition-all duration-300 flex items-center justify-center flex-1 ${
-            activeTab === "live"
-              ? "bg-white text-red-600 shadow-sm"
-              : "text-gray-600 hover:bg-gray-100"
-          }`}
-        >
-          <svg
-            className="w-4 h-4 mr-1"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+            All Shows
+          </button>
+          <button
+            onClick={() => setActiveTab("live")}
+            className={`px-6 py-2 font-medium text-sm rounded-full transition-all duration-300 ${
+              activeTab === "live"
+                ? "bg-red-500 text-whiteLight font-bold"
+                : "text-whiteHalf hover:text-red-400"
+            }`}
           >
-            <circle
-              cx="12"
-              cy="12"
-              r="3"
-              fill={activeTab === "live" ? "currentColor" : "none"}
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-            <path
-              d="M12 5V3M12 21v-2M5 12H3M21 12h-2M18.364 18.364l-1.414-1.414M7.05 7.05L5.636 5.636M18.364 5.636l-1.414 1.414M7.05 16.95l-1.414 1.414"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          Live Shows
-        </button>
-        <button
-          onClick={() => setActiveTab("upcoming")}
-          className={`px-4 py-2 font-medium text-sm md:text-base rounded-lg transition-all duration-300 flex items-center justify-center flex-1 ${
-            activeTab === "upcoming"
-              ? "bg-white text-purple-600 shadow-sm"
-              : "text-gray-600 hover:bg-gray-100"
-          }`}
-        >
-          <svg
-            className="w-4 h-4 mr-1"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+            Live Shows
+          </button>
+          <button
+            onClick={() => setActiveTab("upcoming")}
+            className={`px-6 py-2 font-medium text-sm rounded-full transition-all duration-300 ${
+              activeTab === "upcoming"
+                ? "bg-newYellow text-blackDark font-bold"
+                : "text-whiteHalf hover:text-newYellow"
+            }`}
           >
-            <rect
-              x="3"
-              y="4"
-              width="18"
-              height="18"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="2"
-              fill="none"
-            />
-            <path
-              d="M16 2v4M8 2v4M3 10h18M8 14h2M14 14h2M8 18h2M14 18h2"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-          Upcoming
-        </button>
+            Upcoming
+          </button>
+        </div>
       </div>
 
       {/* Shows grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4  gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
         {filteredShows().map((show, index) => (
           <motion.div
             key={show._id}
@@ -226,159 +167,97 @@ const ShowsFeed = ({ totalShows, shows, userInfo, sellerInfo, hostId }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             whileHover={{ scale: 1.02 }}
-            className="card bg-white shadow-lg rounded-lg overflow-hidden h-full relative"
+            className="bg-blackLight rounded-2xl overflow-hidden relative group cursor-pointer border border-blackLight hover:border-newYellow/50 transition-all duration-300 shadow-xl"
           >
-            {/* Watch Now Button - Only shown for live shows */}
-            {show.showStatus === "live" && (
-              <div className="absolute top-3 right-3 z-30">
-                <Link
-                  to={`/user/show/${show._id}`}
-                  className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold text-center py-1.5 px-4 rounded-full transition-colors duration-200 text-sm shadow-md hover:shadow-lg"
-                >
-                  Watch Now
-                </Link>
-              </div>
-            )}
-
-            <figure className="relative">
-              {/* Image Container */}
-              <div className="w-full h-52 overflow-hidden">
-                <img
-                  src={show?.thumbnailImageURL}
-                  alt={show?.title}
-                  className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                />
-              </div>
-
+            {/* Image Container */}
+            <div className="relative aspect-[16/10] overflow-hidden">
+              <img
+                src={getImageUrl(show?.thumbnailImage)}
+                alt={show?.title}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+              
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-blackDark/90 via-transparent to-transparent"></div>
+              
               {/* Status Badge */}
-              <div className="absolute top-3 left-3 z-20">
+              <div className="absolute top-4 left-4">
                 {show.showStatus === "live" ? (
                   <motion.div
-                    className="bg-red-600 text-white text-xs px-3 py-1.5 rounded-full flex items-center shadow-md"
+                    className="bg-red-500 text-whiteLight text-xs px-3 py-2 rounded-full flex items-center shadow-lg"
                     animate={{ scale: [1, 1.05, 1] }}
                     transition={{ repeat: Infinity, duration: 1.5 }}
                   >
                     <motion.span
-                      className="w-2 h-2 bg-white rounded-full mr-1.5"
+                      className="w-2 h-2 bg-whiteLight rounded-full mr-2"
                       animate={{ opacity: [1, 0.5, 1] }}
                       transition={{ repeat: Infinity, duration: 1 }}
                     />
                     <span className="font-bold">LIVE</span>
                   </motion.div>
                 ) : (
-                  <motion.div className="bg-gray-800 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-md flex items-center">
-                    <span className="mr-1.5">•</span>
-                    <span>UPCOMING</span>
-                  </motion.div>
+                  <div className="bg-newYellow text-blackDark text-xs px-3 py-2 rounded-full font-bold shadow-lg">
+                    UPCOMING
+                  </div>
                 )}
               </div>
 
-              {/* Date & Time Overlay */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent px-4 py-3">
-                <div className="flex items-center justify-between text-white">
-                  <div className="flex items-center">
-                    <svg
-                      className="w-4 h-4 mr-1.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      ></path>
-                    </svg>
-                    <span className="text-xs font-medium">
-                      {formatDateForDisplay(show?.scheduledAt)}
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg
-                      className="w-4 h-4 mr-1.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      ></path>
-                    </svg>
-                    <span className="text-xs font-medium">{formatTimeForDisplay(show?.scheduledAt)}</span>
-                  </div>
+              {/* Watch Now Button - Only for live shows */}
+              {show.showStatus === "live" && (
+                <div className="absolute top-4 right-4">
+                  <Link
+                    to={`/user/show/${show._id}`}
+                    className="bg-newYellow text-blackDark font-bold text-xs py-2 px-4 rounded-full hover:bg-newYellow/90 transition-all duration-200 shadow-lg"
+                  >
+                    Watch Now
+                  </Link>
+                </div>
+              )}
+
+              {/* Date & Time */}
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="flex items-center justify-between text-whiteLight text-xs">
+                  <span className="bg-blackDark/60 backdrop-blur-sm px-3 py-1.5 rounded-full font-medium">
+                    {formatDateForDisplay(show?.scheduledAt)}
+                  </span>
+                  <span className="bg-blackDark/60 backdrop-blur-sm px-3 py-1.5 rounded-full font-medium">
+                    {formatTimeForDisplay(show?.scheduledAt)}
+                  </span>
                 </div>
               </div>
-            </figure>
+            </div>
 
-            <div className="card-body p-4">
-              {/* Title with improved styling */}
-              <h2 className="card-title text-lg font-bold  line-clamp-2 text-gray-800">
+            {/* Content */}
+            <div className="p-5 space-y-4">
+              {/* Title */}
+              <h3 className="text-whiteLight font-semibold text-lg line-clamp-2 group-hover:text-newYellow transition-colors duration-300">
                 {show.title}
-              </h2>
+              </h3>
 
-              {/* Category and Language with enhanced styling */}
-              <div className="flex flex-wrap gap-2 ">
-                <span className="bg-amber-100 px-3 text-xs py-1 rounded-full text-amber-700 font-medium">
+              {/* Category and Language */}
+              <div className="flex gap-2 flex-wrap">
+                <span className="bg-newYellow/20 border border-newYellow/30 text-newYellow text-xs px-3 py-1.5 rounded-full font-medium">
                   {show.language}
                 </span>
-                <span className="bg-gray-100 px-3 text-xs py-1 rounded-full text-gray-700 font-medium">
+                <span className="bg-newYellow/20 border border-newYellow/30 text-newYellow text-xs px-3 py-1.5 rounded-full font-medium">
                   {show.subCategory}
                 </span>
               </div>
 
-              {/* Profile Section - Redesigned to look more professional */}
-              <div
-                className="flex items-center gap-3 mb-3 cursor-pointer rounded-lg hover:bg-gray-50 p-2 transition-all duration-200 border-t border-gray-100 pt-3"
-                onClick={() => handleProfileView(show?.sellerId?._id)}
-              >
-                <div className="avatar">
-                  <div className="w-8 h-8 rounded-full ring ring-amber-400 ring-offset-1">
-                  {
-                      userInfo?.profileURL?.azureUrl ? 
-                      <img
-                      src={userInfo.profileURL.azureUrl}
-                      alt="profile"
-                    />
-                    :
-                    <img
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        userInfo?.userName || "User"
-                      )}&background=random&size=128`}
-                      alt="profile"
-                    />
-                    }
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-800 truncate">
-                    {sellerInfo?.companyName || "Company"}
-                  </h3>
-                  <p className="text-xs text-gray-500 truncate">
-                    @{userInfo?.userName || "user"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Tags with improved styling */}
+              {/* Tags */}
               {show.tags && show.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1">
+                <div className="flex flex-wrap gap-2">
                   {show.tags.slice(0, 3).map((tag, index) => (
                     <span
                       key={index}
-                      className="bg-blue-50 text-blue-600 text-xs px-2.5 py-0.5 rounded-md"
+                      className="bg-blackDark/50 border border-whiteHalf/20 text-whiteHalf text-xs px-2.5 py-1 rounded-full hover:border-newYellow/50 hover:text-newYellow transition-all duration-300"
                     >
                       #{tag}
                     </span>
                   ))}
                   {show.tags.length > 3 && (
-                    <span className="bg-gray-50 text-gray-500 text-xs px-2.5 py-0.5 rounded-md">
-                      +{show.tags.length - 3} more
+                    <span className="bg-blackDark/50 border border-whiteHalf/20 text-whiteHalf text-xs px-2.5 py-1 rounded-full">
+                      +{show.tags.length - 3}
                     </span>
                   )}
                 </div>
@@ -391,7 +270,7 @@ const ShowsFeed = ({ totalShows, shows, userInfo, sellerInfo, hostId }) => {
       {/* No shows message */}
       {filteredShows().length === 0 && (
         <div className="flex justify-center items-center py-16">
-          <h3 className="font-medium text-gray-500">
+          <h3 className="font-medium text-whiteHalf text-lg">
             {activeTab === "live"
               ? "No live shows available at the moment."
               : activeTab === "upcoming"

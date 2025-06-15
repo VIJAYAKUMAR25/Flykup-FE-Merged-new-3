@@ -5,11 +5,23 @@ import UserItem from "./UserItem";
 
 
 const SkeletonUserItem = () => (
-  <div className="flex items-center p-4 animate-pulse">
-    <div className="w-10 h-10 bg-gray-300 rounded-full" />
-    <div className="ml-4 flex-1 space-y-2">
-      <div className="h-4 bg-gray-300 rounded w-1/3" />
-      <div className="h-3 bg-gray-300 rounded w-1/2" />
+  <div className="flex items-center justify-between p-3 sm:p-4 md:p-5 animate-pulse border-b border-gray-300">
+    {/* Left section - Avatar and placeholder text */}
+    <div className="flex items-center flex-1 min-w-0 mr-3 sm:mr-4">
+      {/* Avatar skeleton */}
+      <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-gray-300 rounded-full border-2 border-yellow-400 flex-shrink-0" />
+      
+      {/* Text skeleton */}
+      <div className="ml-3 sm:ml-4 flex-1 space-y-2">
+        <div className="h-3 sm:h-4 bg-gray-300 rounded w-1/3 max-w-[120px]" />
+        <div className="h-2 sm:h-3 bg-gray-200 rounded w-1/2 max-w-[100px]" />
+        <div className="h-2 bg-gray-100 rounded w-1/4 max-w-[60px] hidden sm:block" />
+      </div>
+    </div>
+    
+    {/* Button skeleton */}
+    <div className="flex-shrink-0">
+      <div className="h-8 sm:h-10 bg-gray-300 rounded-full w-16 sm:w-20 md:w-24" />
     </div>
   </div>
 );
@@ -53,7 +65,6 @@ const FollowingList = ({ userId }) => {
        
         const response = await getFollowing(userId, searchTerm, currentPage); 
 
-        console.log("API following Response:", response);
         if (response?.error) {
              console.error(
             "API Error:",
@@ -245,58 +256,89 @@ const FollowingList = ({ userId }) => {
   // --- Component Rendering ---
   return (
     // <<< Attach ref to the scrollable div >>>
-    <div ref={scrollableContainerRef} className="max-h-[60vh] overflow-y-auto">
+    <div 
+      ref={scrollableContainerRef} 
+      className="w-full max-w-none sm:max-w-2xl md:max-w-4xl lg:max-w-5xl mx-auto max-h-[70vh] sm:max-h-[75vh] md:max-h-[80vh] overflow-y-auto  rounded-lg sm:rounded-xl  border border-blackLight/40"
+    >
    
-      {/* Search Input */}
-      <div className="sticky top-0 bg-white p-4 border-b z-10">
-        <input
-          type="text"
-          placeholder="Search following..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+   {/* Search Input */}
+      <div className="sticky top-0 border-b border-gray-700/50 z-10 backdrop-blur-sm">
+        <div className="relative w-full">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 sm:pl-4 pointer-events-none">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-2.5 md:py-2.5 bg-blackLight border border-gray-600 rounded-lg sm:rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 transition-all duration-300 text-sm sm:text-base"
+          />
+        </div>
       </div>
 
-      {/* Initial Loading */}
-      {loadingInitial &&
-        Array.from({ length: 5 }).map((_, i) => (
-          <SkeletonUserItem key={`skel-init-following-${i}`} />
-        ))}
+      {/* Content Container */}
+      <div className="min-h-[200px]">
+        {/* Initial Loading */}
+        {loadingInitial &&
+          Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonUserItem key={`skel-init-following-${i}`} />
+          ))}
 
-      {/* === Following List === */}
-      {!loadingInitial &&
-        following.map((user) => (
-          <UserItem
-            key={`following-${user.userId}`} // Key specific to following
-            user={user}
-            onFollow={() => handleFollow(user.userId)}
-            onUnfollow={() => handleUnfollow(user.userId)}
-          />
-        ))}
+        {/* === Following List === */}
+        {!loadingInitial &&
+          following.map((user) => (
+            <UserItem
+              key={`following-${user.userId}`} // Key specific to following
+              user={user}
+              onFollow={() => handleFollow(user.userId)}
+              onUnfollow={() => handleUnfollow(user.userId)}
+            />
+          ))}
 
-      {/* Pagination Skeleton */}
-      {loadingMore &&
-        Array.from({ length: 2 }).map((_, i) => (
-          <SkeletonUserItem key={`skel-more-following-${i}`} />
-        ))}
+        {/* Pagination Skeleton */}
+        {loadingMore &&
+          Array.from({ length: 2 }).map((_, i) => (
+            <SkeletonUserItem key={`skel-more-following-${i}`} />
+          ))}
 
-      {/* Messages */}
-      {!loadingInitial &&
-        !loadingMore &&
-        following.length === 0 &&
-        !hasMore && (
-          <div className="p-4 text-center text-gray-500">
-            {searchTerm
-              ? `No users found matching "${searchTerm}"`
-              : "You are not following anyone yet."}
+        {/* Empty State Messages */}
+        {!loadingInitial &&
+          !loadingMore &&
+          following.length === 0 &&
+          !hasMore && (
+            <div className="p-6 sm:p-8 md:p-12 text-center">
+              <div className="max-w-md mx-auto">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-blackLight rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-whiteHalf" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-whiteLight text-lg sm:text-xl font-bold mb-2">
+                  {searchTerm ? "No users found" : "No following yet"}
+                </h3>
+                <p className="text-whiteHalf text-sm sm:text-base leading-relaxed">
+                  {searchTerm
+                    ? `No users found matching "${searchTerm}". Try a different search term.`
+                    : "You haven't followed anyone yet. Start exploring to find interesting people to follow!"}
+                </p>
+              </div>
+            </div>
+          )}
+
+        {/* End of List Message */}
+        {!loadingInitial && !loadingMore && following.length > 0 && !hasMore && (
+          <div className="p-4 sm:p-6 text-center border-t border-blackLight/30 bg-blackLight/20">
+            <div className="flex items-center justify-center gap-2 text-whiteHalf text-xs sm:text-sm">
+              <div className="w-8 sm:w-12 h-px bg-whiteHalf/30"></div>
+              <span className="px-2 sm:px-3 whitespace-nowrap">You've reached the end</span>
+              <div className="w-8 sm:w-12 h-px bg-whiteHalf/30"></div>
+            </div>
           </div>
         )}
-      {!loadingInitial && !loadingMore && following.length > 0 && !hasMore && (
-        <div className="p-4 text-center text-gray-500">
-          You've reached the end of the list.
-        </div>
-      )}
+      </div>
     </div>
   );
 };

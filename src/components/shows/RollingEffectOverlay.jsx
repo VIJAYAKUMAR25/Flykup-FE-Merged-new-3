@@ -99,7 +99,7 @@ const RollingEffectOverlay = ({ isRolling, duration = 5000 }) => {
               }}
               className="text-xs font-semibold px-2 py-1 rounded truncate"
             >
-              {displayName}
+             @ {displayName}
             </motion.div>
           </div>
         </div>

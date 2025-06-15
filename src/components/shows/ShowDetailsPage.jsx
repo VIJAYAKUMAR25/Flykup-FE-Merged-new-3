@@ -22,7 +22,7 @@ import { AiOutlineShop } from "react-icons/ai";
 import ViewLiveStream from "../reuse/LiveStream/ViewLiveStream";
 import { BiNotepad } from "react-icons/bi";
 import RollingEffectOverlay from "./RollingEffectOverlay";
-
+import { useFollowApi } from "../ProfileComponents/useFollowApi"; 
 // --- HELPER FUNCTION: SAFELY GET PRODUCT ID ---
 const getProductIdSafely = (productField) => {
     if (!productField) return null;
@@ -64,6 +64,33 @@ const ShowDetailsPage = ({ requireAuth, isAuthenticated, currentUser }) => {
     const [isGiveawayModalOpen, setIsGiveawayModalOpen] = useState(false);
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
 
+const { followUser, unfollowUser } = useFollowApi();
+  const [followLoading, setFollowLoading] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(false);
+    const handleFollowClick = async () => {
+      requireAuth(async () => {
+        if (!show?.host?._id) return;
+        try {
+          setFollowLoading(true);
+          if (isFollowing) {
+            await unfollowUser(show.host._id);
+            localStorage.removeItem(`isFollowing_${show.host._id}`);
+            setIsFollowing(false);
+            toast.success("Unfollowed successfully");
+          } else {
+            await followUser(show.host._id);
+            localStorage.setItem(`isFollowing_${show.host._id}`, "true");
+            setIsFollowing(true);
+            toast.success("Followed successfully");
+          }
+        } catch (error) {
+          console.error("Follow/unfollow error:", error);
+          toast.error(error.response?.data?.message || "Something went wrong");
+        } finally {
+          setFollowLoading(false);
+        }
+      });
+    };
 
     // This function now only fetches the show data once on initial load.
     // All subsequent updates will happen via WebSocket events.
@@ -94,7 +121,7 @@ const ShowDetailsPage = ({ requireAuth, isAuthenticated, currentUser }) => {
 
             } else {
                 console.error("Failed to fetch show details.");
-                toast.error("Failed to fetch show details.");
+        
             }
         } catch (error) {
             console.error("Error fetching show details:", error);
@@ -225,7 +252,7 @@ const ShowDetailsPage = ({ requireAuth, isAuthenticated, currentUser }) => {
         const handleGiveawayWinner = ({ streamId: winStreamId, productId: winProductId, winner: newWinner, productTitle }) => {
             if (winStreamId === id) {
                 setWinner(newWinner); // Trigger confetti and winner display
-                toast.success(`🎉 ${newWinner?.userName || newWinner?.name || 'A user'} won the giveaway: ${productTitle}!`);
+                // toast.success(`🎉 ${newWinner?.userName || newWinner?.name || 'A user'} won the giveaway: ${productTitle}!`);
 
                 setShow(prevShow => {
                     if (!prevShow) return prevShow;
@@ -262,7 +289,7 @@ const ShowDetailsPage = ({ requireAuth, isAuthenticated, currentUser }) => {
         const handleGiveawayEndedManually = ({ streamId: endStreamId, productId: endProductId, productTitle, message }) => {
             console.log("User: Giveaway ended manually event received", message);
             if (endStreamId === id) {
-                toast.info(message);
+                // toast.info(message);
 
                 setShow(prevShow => {
                     if (!prevShow) return prevShow;
@@ -395,8 +422,10 @@ const ShowDetailsPage = ({ requireAuth, isAuthenticated, currentUser }) => {
 );
 
     const handleProfileView = (profileId) => {
-        navigate(`/profile/seller/${profileId}`)
-    }
+  requireAuth(() => {
+    navigate(`/profile/seller/${profileId}`)
+  });
+}
 
     useEffect(() => {
         return () => clearTimeout(timerRef.current);
@@ -411,79 +440,106 @@ return(
             <div className="w-[25%] hidden lg:block border-r border-stone-800 bg-stone-950 text-white shadow-xl">
                 <div className="p-6 space-y-6">
                     {/* Back Button */}
-                    <button
+                    {/* <button
                         onClick={() => navigate(`/profile/`)}
                         className="flex items-center gap-2 px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 transition-all duration-300 text-sm font-medium"
                     >
                         <ArrowLeft className="w-4 h-4" /> Back
-                    </button>
+                    </button> */}
 
                     {/* Seller Info */}
-                    <div className="flex items-center space-x-3 p-4 bg-stone-900 rounded-2xl shadow-lg border border-stone-800">
-                        <div className="avatar">
-                            {show?.host?.userInfo?.profileURL ? (
-                                <div
-                                    className="w-12 h-12 rounded-full ring-2 ring-yellow-500/20 overflow-hidden"
-                                    onClick={() => handleProfileView(show?.host?._id)}
-                                >
-                                    <img
-                                        src={show?.host?.userInfo?.profileURL || "/placeholder.svg"}
-                                        alt={show?.host?.userInfo?.userName || show?.host?.userInfo?.name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                            e.target.parentElement.innerHTML = `<div class="w-12 h-12 bg-stone-800 text-yellow-500 rounded-full flex items-center justify-center">
-                                                <span class="text-lg font-bold capitalize">${show?.host?.userInfo?.userName?.charAt(0) || show?.host?.userInfo?.name?.charAt(0)}</span>
-                                            </div>`
-                                        }}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="bg-stone-800 text-yellow-500 rounded-full w-12 h-12 flex items-center justify-center ring-2 ring-yellow-500/20">
-                                    <span className="text-lg font-bold capitalize">{show?.host?.userInfo?.userName?.charAt(0) || show?.host?.userInfo?.name?.charAt(0)}</span>
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <h2
-                                className="font-semibold text-lg cursor-pointer hover:text-yellow-500 transition-colors"
-                                onClick={() => handleProfileView(show?.host?._id)}
-                            >
-                                {show?.host?.companyName || show?.host?.businessName}
-                            </h2>
-                            <div className="flex items-center space-x-2 text-sm text-stone-400">
-                                <span className="flex items-center gap-1">
-                                    <span className="text-yellow-500">★</span> <span>5.0</span>
-                                </span>
-                                <span>•</span>
-                                <button className="px-3 py-1 bg-yellow-400 text-stone-900 rounded-full text-xs font-bold hover:bg-yellow-500 transition-colors">
-                                    Follow
-                                </button>
-                            </div>
-                        </div>
+                         <div className="flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 bg-stone-900 rounded-xl sm:rounded-2xl shadow-lg border border-stone-800">
+                                    <div className="avatar">
+                                    {show?.host?.userInfo?.profileURL ? (
+                                        <div
+                                        className="w-8 h-8 sm:w-10 md:w-12 sm:h-10 md:h-12 rounded-full ring-2 ring-yellow-500/20 overflow-hidden cursor-pointer"
+                                        onClick={() => handleProfileView(show?.host?._id)}
+                                        >
+                                        <img
+                                    src={`${import.meta.env.VITE_AWS_CDN_URL}${show?.host?.userInfo?.profileURL?.key}` || "/placeholder.svg"}
+
+                                            alt={
+                                            show?.host?.userInfo?.userName ||
+                                            show?.host?.userInfo?.name
+                                            }
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                            e.target.parentElement.innerHTML = `<div class="w-8 h-8 sm:w-10 md:w-12 sm:h-10 md:h-12 bg-stone-800 text-yellow-500 rounded-full flex items-center justify-center">
+                                                                        <span class="text-sm sm:text-base md:text-lg font-bold capitalize">${show?.host?.userInfo?.userName.charAt(
+                                                                        0
+                                                                        )}</span>
+                                                                    </div>`;
+                                            }}
+                                        />
+                                        </div>
+                                    ) : (
+                                        <div className="bg-stone-800 text-yellow-500 rounded-full w-8 h-8 sm:w-10 md:w-12 sm:h-10 md:h-12 flex items-center justify-center ring-2 ring-yellow-500/20">
+                                        <span className="text-sm sm:text-base md:text-lg font-bold capitalize">
+                                            {show?.host?.userInfo?.userName?.charAt(0)}
+                                        </span>
+                                        </div>
+                                    )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                    <h2
+                                        className="font-semibold text-sm sm:text-base md:text-lg cursor-pointer hover:text-yellow-500 transition-colors truncate"
+                                        onClick={() => handleProfileView(show?.host?._id)}
+                                    >
+                                        {show?.host?.companyName || show?.host?.businessName}
+                                    </h2>
+                                    <div className="flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm text-stone-400">
+                                        <span className="flex items-center gap-0.5 sm:gap-1">
+                                        <span className="text-yellow-500">★</span> <span>5.0</span>
+                                        </span>
+                                        <span>•</span>
+                                    <button 
+                        onClick={handleFollowClick}
+                        disabled={followLoading}
+                        className="px-3 py-1 bg-yellow-400 text-stone-900 rounded-full text-xs font-bold hover:bg-yellow-500 transition-colors disabled:opacity-50"
+                        >
+                        {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
+                        </button>
                     </div>
+                    </div>
+                </div>
                 </div>
                 <div className="p-6 space-y-6">
                     {/* Navigation Tabs */}
-                    <div className="flex bg-stone-900 p-1.5 rounded-xl shadow-md border border-stone-800">
+                     <div className="flex bg-stone-900  p-1 sm:p-1.5 lg:p-1 rounded-lg sm:rounded-xl shadow-md border border-stone-800">
                         <button
-                            className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === "Auction" ? "bg-yellow-400 text-stone-900 font-semibold" : "text-stone-300 hover:bg-stone-800"}`}
+                            className={`flex-1 py-2 sm:py-2.5 lg:py-2 px-2 sm:px-4 lg:px-2 rounded-md sm:rounded-lg 
+                            text-[11px] sm:text-xs lg:text-[13px] font-medium transition-all ${
+                            activeTab === "Auction"
+                                ? "bg-yellow-400 text-stone-900 font-semibold"
+                                : "text-stone-300 hover:bg-stone-800"
+                            }`}
                             onClick={() => setActiveTab("Auction")}
                         >
                             Auction
                         </button>
                         <button
-                            className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === "Buy Now" ? "bg-yellow-400 text-stone-900 font-semibold" : "text-stone-300 hover:bg-stone-800"}`}
+                            className={`flex-1 py-2 sm:py-2.5 lg:py-2 px-2 sm:px-4 lg:px-2 rounded-md sm:rounded-lg 
+                            text-[11px] sm:text-xs lg:text-[13px] font-medium transition-all ${
+                            activeTab === "Buy Now"
+                                ? "bg-yellow-400 text-stone-900 font-semibold"
+                                : "text-stone-300 hover:bg-stone-800"
+                            }`}
                             onClick={() => setActiveTab("Buy Now")}
                         >
                             Buy Now
                         </button>
                         <button
-                            className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === "Giveaway" ? "bg-yellow-400 text-stone-900 font-semibold" : "text-stone-300 hover:bg-stone-800"}`}
-                            onClick={() => setActiveTab("Giveaway")}
+                            className={`flex-1 py-2 sm:py-2.5 lg:py-2 px-2 sm:px-4 lg:px-2 rounded-md sm:rounded-lg 
+                            text-[11px] sm:text-xs lg:text-[13px] font-medium transition-all ${
+                            activeTab === "Give away"
+                                ? "bg-yellow-400 text-stone-900 font-semibold"
+                                : "text-stone-300 hover:bg-stone-800"
+                            }`}
+                            onClick={() => setActiveTab("Give away")}
                         >
                             Giveaway
                         </button>
-                    </div>
+                        </div>
 
                     {/* Tab Content */}
                     <div
@@ -621,53 +677,62 @@ return(
                             </div>
 
                             {/* Seller Info */}
-                            <div className="flex items-center space-x-3 p-4 bg-stone-900 rounded-2xl shadow-lg border border-stone-800">
-                                <div className="avatar">
-                                    {show?.host?.userInfo?.profileURL ? (
-                                        <div
-                                            className="w-12 h-12 rounded-full ring-2 ring-yellow-500/20 overflow-hidden"
-                                            onClick={() => handleProfileView(show?.sellerId?._id)}
-                                        >
-                                            <img
-                                                src={
-                                                    show?.host?.userInfo?.profileURL ||
-                                                    "/placeholder.svg"
-                                                }
-                                                alt={show?.host?.userInfo?.userName || show?.host?.userInfo?.name}
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    e.target.parentElement.innerHTML = `<div class="w-12 h-12 bg-stone-800 text-yellow-500 rounded-full flex items-center justify-center">
-                                                        <span class="text-lg font-bold capitalize">${show?.host?.userInfo?.userName.charAt(0)}</span>
-                                                    </div>`
-                                                }}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="bg-stone-800 text-yellow-500 rounded-full w-10 h-10 flex items-center justify-center ring-2 ring-yellow-500/30">
-                                            <span className="text-sm font-bold capitalize">
-                                                {show?.host?.userInfo?.userName?.charAt(0)}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div>
-                                    <h2
-                                        className="font-semibold text-lg cursor-pointer hover:text-yellow-500 transition-colors"
-                                        onClick={() => handleProfileView(show?.host?._id)}
-                                    >
-                                        {show?.host?.companyName || show?.host?.businessName }
-                                    </h2>
-                                    <div className="flex items-center space-x-2 text-sm text-stone-400">
-                                        <span className="flex items-center gap-1">
-                                            <span className="text-yellow-500">★</span> <span>5.0</span>
-                                        </span>
-                                        <span>•</span>
-                                        <button className="px-3 py-1 bg-yellow-500 text-stone-900 rounded-full text-xs font-bold hover:bg-yellow-400 transition-colors">
-                                            Follow
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                  <div className="max-w-sm w-full bg-stone-900 p-4 rounded-2xl shadow-lg border border-stone-800 flex items-center space-x-4">
+  {/* Avatar */}
+  <div className="avatar">
+    {show?.host?.userInfo?.profileURL ? (
+      <div
+        className="w-14 h-14 rounded-full ring-2 ring-yellow-500/20 overflow-hidden cursor-pointer"
+        onClick={() => handleProfileView(show?.host?._id)}
+      >
+        <img
+          src={`${import.meta.env.VITE_AWS_CDN_URL}${show?.host?.userInfo?.profileURL?.key}` || "/placeholder.svg"}
+          alt={
+            show?.host?.userInfo?.userName ||
+            show?.host?.userInfo?.name
+          }
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.target.parentElement.innerHTML = `
+              <div class='w-14 h-14 bg-stone-800 text-yellow-500 rounded-full flex items-center justify-center'>
+                <span class='text-lg font-bold capitalize'>${show?.host?.userInfo?.userName.charAt(0)}</span>
+              </div>`;
+          }}
+        />
+      </div>
+    ) : (
+      <div className="w-14 h-14 bg-stone-800 text-yellow-500 rounded-full flex items-center justify-center ring-2 ring-yellow-500/20">
+        <span className="text-lg font-bold capitalize">
+          {show?.host?.userInfo?.userName?.charAt(0)}
+        </span>
+      </div>
+    )}
+  </div>
+
+  {/* Details */}
+  <div className="flex-1">
+    <h2
+      className="font-semibold text-lg text-white cursor-pointer hover:text-yellow-500 transition-colors"
+      onClick={() => handleProfileView(show?.host?._id)}
+    >
+      {show?.host?.companyName || show?.host?.businessName}
+    </h2>
+    <div className="flex items-center space-x-2 text-sm text-stone-400 mt-1">
+      <span className="flex items-center gap-1">
+        <span className="text-yellow-500">★</span>
+        <span>5.0</span>
+      </span>
+      <span>•</span>
+      <button
+        onClick={handleFollowClick}
+        disabled={followLoading}
+        className="px-3 py-1 bg-yellow-400 text-stone-900 rounded-full text-xs font-bold hover:bg-yellow-500 transition-colors disabled:opacity-50"
+      >
+        {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
+      </button>
+    </div>
+  </div>
+</div>
 
                             {/* Navigation Tabs */}
                             <div className="flex bg-stone-900 p-1.5 rounded-xl shadow-md border border-stone-800">
@@ -801,53 +866,63 @@ return(
                         onMouseLeave={handleMouseLeave}
                     >
                         {/* Seller Info */}
-                        <div className="flex items-center space-x-3 rounded-2xl py-2">
-                            <div className="avatar">
-                                {show?.host?.userInfo?.profileURL ? (
-                                    <div
-                                        className="w-10 h-10 rounded-full ring-2 ring-yellow-500/30 overflow-hidden"
-                                        onClick={() => handleProfileView(show?.sellerId?._id)}
-                                    >
-                                        <img
-                                            src={
-                                                show?.host?.userInfo?.profileURL ||
-                                                "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg"
-                                            }
-                                            alt={show?.host?.userInfo?.userName || show?.host?.userInfo?.name}
-                                            className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                e.target.parentElement.innerHTML = `<div class="w-10 h-10 bg-stone-800 text-yellow-500 rounded-full flex items-center justify-center">
-                                                    <span class="text-sm font-bold capitalize">${show?.host?.userInfo?.userName.charAt(0)}</span>
-                                                </div>`
-                                            }}
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="bg-stone-800 text-yellow-500 rounded-full w-10 h-10 flex items-center justify-center ring-2 ring-yellow-500/30">
-                                        <span className="text-sm font-bold capitalize">
-                                            {show?.host?.userInfo?.userName?.charAt(0)}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                            <div>
-                                <h2
-                                    className="font-semibold text-lg cursor-pointer hover:text-yellow-500 transition-colors"
-                                    onClick={() => handleProfileView(show?.host?._id)}
-                                >
-                                    {show?.host?.companyName || show?.host?.businessName }
-                                </h2>
-                                <div className="flex items-center space-x-2 text-sm text-stone-200">
-                                    <span className="flex items-center gap-1 text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.5)]">
-                                        <span className="text-yellow-500">★</span> <span>5.0</span>
-                                    </span>
-                                    <span>•</span>
-                                    <button className="px-3 py-1 bg-yellow-400 text-stone-900 rounded-full text-xs font-bold hover:bg-yellow-400 transition-colors">
-                                        Follow
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                <div className="flex items-center space-x-3 rounded-2xl py-2">
+  <div className="avatar">
+    {show?.host?.userInfo?.profileURL?.key ? (
+      <div
+        className="w-10 h-10 rounded-full ring-2 ring-yellow-500/30 overflow-hidden"
+        onClick={() => handleProfileView(show?.sellerId?._id)}
+      >
+        <img
+          src={
+            `${import.meta.env.VITE_AWS_CDN_URL}${show?.host?.userInfo?.profileURL?.key}` ||
+            "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg"
+          }
+          alt={
+            show?.host?.userInfo?.userName ||
+            show?.host?.userInfo?.name
+          }
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            const firstLetter = show?.host?.userInfo?.userName?.charAt(0) || "U";
+            e.target.parentElement.innerHTML = `<div class='w-10 h-10 bg-stone-800 text-yellow-500 rounded-full flex items-center justify-center'>
+                <span class='text-sm font-bold capitalize'>${firstLetter}</span>
+              </div>`;
+          }}
+        />
+      </div>
+    ) : (
+      <div className="bg-stone-800 text-yellow-500 rounded-full w-10 h-10 flex items-center justify-center ring-2 ring-yellow-500/30">
+        <span className="text-sm font-bold capitalize">
+          {show?.host?.userInfo?.userName?.charAt(0)}
+        </span>
+      </div>
+    )}
+  </div>
+
+
+              <div>
+                <h2
+                  className="font-semibold text-lg cursor-pointer hover:text-yellow-500 transition-colors"
+                  onClick={() => handleProfileView(show?.host?._id)}
+                >
+                  {show?.host?.companyName || show?.host?.businessName}
+                </h2>
+                <div className="flex items-center space-x-2 text-sm text-stone-200">
+                  <span className="flex items-center gap-1 text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.5)]">
+                    <span className="text-yellow-500">★</span> <span>5.0</span>
+                  </span>
+                  <span>•</span>
+                         <button 
+  onClick={handleFollowClick}
+  disabled={followLoading}
+  className="px-3 py-1 bg-yellow-400 text-stone-900 rounded-full text-xs font-bold hover:bg-yellow-500 transition-colors disabled:opacity-50"
+>
+  {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
+</button> 
+                </div>
+              </div>
+            </div>
                     </div>
 
                     <div className="absolute top-24 left-2 p-4 text-center">
@@ -878,7 +953,7 @@ return(
 
                     {/* Giveaway button on video overlay */}
                     <div
-                        onClick={() => setIsGiveawayModalOpen(true)}
+                        onClick={() => requireAuth(() => setIsGiveawayModalOpen(true))}
                         className="absolute top-24 right-4 p-3 text-center bg-stone-900/80 backdrop-blur-sm border border-stone-700/30 rounded-xl cursor-pointer hover:bg-stone-800 transition shadow-lg"
                     >
                         <p className="mb-1 font-semibold text-sm">Giveaway</p>
@@ -989,7 +1064,7 @@ return(
                         />
 
                         <button
-                            onClick={() => setIsNotesModalOpen(true)}
+                             onClick={() => requireAuth(() => setIsNotesModalOpen(true))}
                             className="w-10 h-10 flex items-center justify-center rounded-full bg-stone-800/80 backdrop-blur-sm border border-stone-700/30 text-white hover:bg-stone-700/90 active:bg-stone-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                         >
                             <BiNotepad className="h-5 w-5" /> 

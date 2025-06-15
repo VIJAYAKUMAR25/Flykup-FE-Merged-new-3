@@ -1,9 +1,9 @@
 
-export const backendurl ="http://localhost:6969/api/";
+// export const backendurl ="http://localhost:6969/api/";
 // export const backendurl ="https://flykup-be-merged-live-code.vercel.app/api/";
 
 
-// export const backendurl ="https://flykup-be-merged-live-code-1.onrender.com/api/";
+export const backendurl ="https://flykup-be-merged-live-code-1.onrender.com/api/";
 
 
 export const generateShowLink = "https://app.flykup.live/profile/show";  

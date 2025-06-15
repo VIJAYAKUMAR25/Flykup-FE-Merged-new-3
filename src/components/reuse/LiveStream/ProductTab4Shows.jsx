@@ -943,14 +943,14 @@ const AuctionTabContent = ({
                         <div className="avatar">
                           <div className="w-16 h-16 rounded-lg overflow-hidden">
                             <img
-                              src={
-                                product?.images[0]?.key
-                                  ? `${cdnURL}${product.images[0].key}`
-                                  : "/placeholder-image.png"
-                              }
-                              alt={product?.title}
-                              className="w-full h-full object-cover"
-                            />
+  src={
+    product.images && product.images.length > 0 && product.images[0].key
+      ? `${cdnURL}${product.images[0].key}`
+      : "/placeholder-image.png"
+  }
+  alt={product?.title}
+  className="w-full h-full object-cover"
+/>
                           </div>
                         </div>
                       </td>

@@ -464,7 +464,7 @@ const OtpVerification = ({ phone, email, onViewChange, isModal = false }) => {
               >
                 Resend
               </button>
-              {!canResend && ` (${timer}s)`}
+              {/* {!canResend && ` (${timer}s)`} */}
             </p>
             
             {isModal && (

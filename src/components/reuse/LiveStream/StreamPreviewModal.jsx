@@ -440,10 +440,10 @@ const StreamPreviewModal = ({
   // Get status color
   const getStatusColor = (status) => {
     switch (status) {
-      case 'success': return 'text-green-500';
-      case 'error': return 'text-red-500';
-      case 'denied': return 'text-red-500';
-      default: return 'text-yellow-500';
+      case 'success': return 'text-greenLight';
+      case 'error': return 'text-red-500'; // Keep standard red for errors
+      case 'denied': return 'text-red-500'; // Keep standard red for denied
+      default: return 'text-whiteHalf'; // Use whiteHalf for pending/not tested
     }
   };
   
@@ -462,18 +462,18 @@ const StreamPreviewModal = ({
   return (
     <>
       {/* Modal Backdrop */}
-      <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-blackDark bg-opacity-75 z-50 flex items-center justify-center p-4">
         {/* Modal Content */}
-        <div className="bg-gray-900 text-white rounded-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+        <div className="bg-blackLight text-whiteLight rounded-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
           {/* Modal Header */}
-          <div className="flex justify-between items-center p-6 border-b border-gray-700">
+          <div className="flex justify-between items-center p-6 border-b border-greyLight">
             <div>
               <h2 className="text-2xl font-bold">Stream Preview & Setup</h2>
-              <p className="text-gray-400 mt-1">Test your camera, microphone, and stream settings before going live</p>
+              <p className="text-whiteHalf mt-1">Test your camera, microphone, and stream settings before going live</p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white text-2xl font-bold"
+              className="text-whiteHalf hover:text-whiteLight text-2xl font-bold"
             >
               ✕
             </button>
@@ -484,7 +484,7 @@ const StreamPreviewModal = ({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Video Preview */}
               <div className="space-y-4">
-                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                <div className="relative bg-blackDark rounded-lg overflow-hidden aspect-video">
                   <video
                     ref={videoRef}
                     autoPlay
@@ -494,10 +494,10 @@ const StreamPreviewModal = ({
                   />
                   
                   {!isPreviewActive && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                    <div className="absolute inset-0 flex items-center justify-center bg-greyDark">
                       <div className="text-center">
                         <div className="text-4xl mb-2">📹</div>
-                        <p className="text-gray-400">Camera preview will appear here</p>
+                        <p className="text-whiteHalf">Camera preview will appear here</p>
                       </div>
                     </div>
                   )}
@@ -507,14 +507,14 @@ const StreamPreviewModal = ({
                     <div className="flex space-x-2">
                       <button
                         onClick={toggleVideoMute}
-                        className={`p-2 rounded-full ${isVideoMuted ? 'bg-red-500' : 'bg-gray-700'} hover:bg-opacity-80 transition`}
+                        className={`p-2 rounded-full ${isVideoMuted ? 'bg-red-600' : 'bg-greyLight'} hover:bg-opacity-80 transition`}
                         title={isVideoMuted ? 'Unmute Video' : 'Mute Video'}
                       >
                         {isVideoMuted ? '🚫' : '📹'}
                       </button>
                       <button
                         onClick={toggleAudioMute}
-                        className={`p-2 rounded-full ${isAudioMuted ? 'bg-red-500' : 'bg-gray-700'} hover:bg-opacity-80 transition`}
+                        className={`p-2 rounded-full ${isAudioMuted ? 'bg-red-600' : 'bg-greyLight'} hover:bg-opacity-80 transition`}
                         title={isAudioMuted ? 'Unmute Audio' : 'Mute Audio'}
                       >
                         {isAudioMuted ? '🔇' : '🎤'}
@@ -522,11 +522,11 @@ const StreamPreviewModal = ({
                     </div>
                     
                     {/* Audio Level Indicator */}
-                    <div className="flex items-center space-x-2 bg-gray-800 px-3 py-1 rounded-full">
-                      <span className="text-xs">🎵</span>
-                      <div className="w-16 h-2 bg-gray-600 rounded-full overflow-hidden">
+                    <div className="flex items-center space-x-2 bg-greyDark px-3 py-1 rounded-full">
+                      <span className="text-xs text-whiteLight">🎵</span>
+                      <div className="w-16 h-2 bg-greyLight rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-green-500 transition-all duration-100"
+                          className="h-full bg-greenLight transition-all duration-100"
                           style={{ width: `${audioLevel * 100}%` }}
                         />
                       </div>
@@ -535,15 +535,15 @@ const StreamPreviewModal = ({
                 </div>
                 
                 {/* Stream Quality Settings */}
-                <div className="bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Quality Settings</h3>
+                <div className="bg-blackDark p-4 rounded-lg">
+                  <h3 className="font-semibold mb-3 text-whiteLight">Quality Settings</h3>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Video Quality</label>
+                      <label className="block text-sm font-medium mb-1 text-whiteLight">Video Quality</label>
                       <select
                         value={videoQuality}
                         onChange={(e) => setVideoQuality(e.target.value)}
-                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className={`select select-bordered focus:select-focus w-full bg-blackDark ${videoQuality ? 'text-whiteLight' : 'text-whiteHalf'} focus:border-newYellow focus:ring-1 focus:ring-newYellow transition-all duration-200`}
                       >
                         {Object.keys(videoQualityPresets).map(quality => (
                           <option key={quality} value={quality}>
@@ -553,11 +553,11 @@ const StreamPreviewModal = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Audio Quality</label>
+                      <label className="block text-sm font-medium mb-1 text-whiteLight">Audio Quality</label>
                       <select
                         value={audioQuality}
                         onChange={(e) => setAudioQuality(e.target.value)}
-                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className={`select select-bordered focus:select-focus w-full bg-blackDark ${audioQuality ? 'text-whiteLight' : 'text-whiteHalf'} focus:border-newYellow focus:ring-1 focus:ring-newYellow transition-all duration-200`}
                       >
                         {Object.keys(audioQualityPresets).map(quality => (
                           <option key={quality} value={quality}>
@@ -573,15 +573,15 @@ const StreamPreviewModal = ({
               {/* Device Settings & Tests */}
               <div className="space-y-4">
                 {/* Device Selection */}
-                <div className="bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Device Selection</h3>
+                <div className="bg-blackDark p-4 rounded-lg">
+                  <h3 className="font-semibold mb-3 text-whiteLight">Device Selection</h3>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Camera</label>
+                      <label className="block text-sm font-medium mb-1 text-whiteLight">Camera</label>
                       <select
                         value={selectedDevices.camera || ''}
                         onChange={(e) => setSelectedDevices(prev => ({ ...prev, camera: e.target.value }))}
-                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className={`select select-bordered focus:select-focus w-full bg-blackDark ${selectedDevices.camera ? 'text-whiteLight' : 'text-whiteHalf'} focus:border-newYellow focus:ring-1 focus:ring-newYellow transition-all duration-200`}
                       >
                         <option value="">Select Camera</option>
                         {devices.cameras.map(device => (
@@ -591,15 +591,15 @@ const StreamPreviewModal = ({
                         ))}
                       </select>
                       {devices.cameras.length === 0 && (
-                        <p className="text-yellow-400 text-xs mt-1">⚠️ No cameras detected</p>
+                        <p className="text-whiteHalf text-xs mt-1">⚠️ No cameras detected</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Microphone</label>
+                      <label className="block text-sm font-medium mb-1 text-whiteLight">Microphone</label>
                       <select
                         value={selectedDevices.microphone || ''}
                         onChange={(e) => setSelectedDevices(prev => ({ ...prev, microphone: e.target.value }))}
-                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className={`select select-bordered focus:select-focus w-full bg-blackDark ${selectedDevices.microphone ? 'text-whiteLight' : 'text-whiteHalf'} focus:border-newYellow focus:ring-1 focus:ring-newYellow transition-all duration-200`}
                       >
                         <option value="">Select Microphone</option>
                         {devices.microphones.map(device => (
@@ -609,14 +609,14 @@ const StreamPreviewModal = ({
                         ))}
                       </select>
                       {devices.microphones.length === 0 && (
-                        <p className="text-yellow-400 text-xs mt-1">⚠️ No microphones detected</p>
+                        <p className="text-whiteHalf text-xs mt-1">⚠️ No microphones detected</p>
                       )}
                     </div>
                     
                     {/* Device Status Info */}
                     {(!selectedDevices.camera && !selectedDevices.microphone) && (
-                      <div className="bg-yellow-900 border border-yellow-700 p-3 rounded-md">
-                        <p className="text-yellow-300 text-sm">
+                      <div className="bg-yellowHalf border border-newYellow p-3 rounded-md">
+                        <p className="text-whiteLight text-sm">
                           ⚠️ Please select at least one device (camera or microphone) to start the preview.
                         </p>
                       </div>
@@ -625,23 +625,23 @@ const StreamPreviewModal = ({
                 </div>
                 
                 {/* System Tests */}
-                <div className="bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">System Tests</h3>
+                <div className="bg-blackDark p-4 rounded-lg">
+                  <h3 className="font-semibold mb-3 text-whiteLight">System Tests</h3>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Camera Test</span>
+                      <span className="text-sm text-whiteLight">Camera Test</span>
                       <span className={`text-sm ${getStatusColor(testResults.camera)}`}>
                         {getStatusIcon(testResults.camera)} {testResults.camera || 'Not tested'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Microphone Test</span>
+                      <span className="text-sm text-whiteLight">Microphone Test</span>
                       <span className={`text-sm ${getStatusColor(testResults.microphone)}`}>
                         {getStatusIcon(testResults.microphone)} {testResults.microphone || 'Not tested'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Network Test</span>
+                      <span className="text-sm text-whiteLight">Network Test</span>
                       <span className={`text-sm ${getStatusColor(testResults.connection)}`}>
                         {getStatusIcon(testResults.connection)} {testResults.connection || 'Not tested'}
                       </span>
@@ -652,13 +652,13 @@ const StreamPreviewModal = ({
                     <button
                       onClick={testAudioPlayback}
                       disabled={isTestingAudio}
-                      className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-md text-sm font-medium transition"
+                      className="flex-1 py-2 px-3 bg-newYellow hover:bg-opacity-80 disabled:bg-whiteSecondary rounded-md text-sm font-medium transition text-blackDark"
                     >
                       {isTestingAudio ? 'Testing...' : 'Test Audio'}
                     </button>
                     <button
                       onClick={testConnection}
-                      className="flex-1 py-2 px-3 bg-green-600 hover:bg-green-700 rounded-md text-sm font-medium transition"
+                      className="flex-1 py-2 px-3 bg-greenLight hover:bg-opacity-80 rounded-md text-sm font-medium transition text-whiteLight"
                     >
                       Test Network
                     </button>
@@ -666,27 +666,27 @@ const StreamPreviewModal = ({
                 </div>
                 
                 {/* Permissions Status */}
-                <div className="bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Permissions</h3>
+                <div className="bg-blackDark p-4 rounded-lg">
+                  <h3 className="font-semibold mb-3 text-whiteLight">Permissions</h3>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Camera Access</span>
+                      <span className="text-sm text-whiteLight">Camera Access</span>
                       <span className={`text-sm ${
-                        permissions.camera === 'granted' ? 'text-green-500' : 
-                        permissions.camera === 'denied' ? 'text-red-500' : 'text-yellow-500'
+                        permissions.camera === 'granted' ? 'text-greenLight' : 
+                        permissions.camera === 'denied' ? 'text-red-500' : 'text-whiteHalf'
                       }`}>
                         {permissions.camera === 'granted' ? '✅ Granted' : 
-                         permissions.camera === 'denied' ? '❌ Denied' : '⏳ Pending'}
+                          permissions.camera === 'denied' ? '❌ Denied' : '⏳ Pending'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Microphone Access</span>
+                      <span className="text-sm text-whiteLight">Microphone Access</span>
                       <span className={`text-sm ${
-                        permissions.microphone === 'granted' ? 'text-green-500' : 
-                        permissions.microphone === 'denied' ? 'text-red-500' : 'text-yellow-500'
+                        permissions.microphone === 'granted' ? 'text-greenLight' : 
+                        permissions.microphone === 'denied' ? 'text-red-500' : 'text-whiteHalf'
                       }`}>
                         {permissions.microphone === 'granted' ? '✅ Granted' : 
-                         permissions.microphone === 'denied' ? '❌ Denied' : '⏳ Pending'}
+                          permissions.microphone === 'denied' ? '❌ Denied' : '⏳ Pending'}
                       </span>
                     </div>
                   </div>
@@ -710,17 +710,17 @@ const StreamPreviewModal = ({
           </div>
           
           {/* Modal Footer */}
-          <div className="border-t border-gray-700 p-6">
+          <div className="border-t border-greyLight p-6">
             <div className="flex justify-center space-x-4">
               <button
                 onClick={isPreviewActive ? stopStreams : requestUserMedia}
                 disabled={!isPreviewActive && !selectedDevices.camera && !selectedDevices.microphone}
                 className={`px-6 py-3 rounded-lg font-medium transition ${
                   isPreviewActive 
-                    ? 'bg-red-600 hover:bg-red-700 text-white' 
+                    ? 'bg-red-600 hover:bg-red-700 text-whiteLight' 
                     : (!selectedDevices.camera && !selectedDevices.microphone)
-                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      ? 'bg-greyDark text-whiteHalf cursor-not-allowed'
+                      : 'bg-newYellow hover:bg-opacity-80 text-blackDark'
                 }`}
                 title={(!selectedDevices.camera && !selectedDevices.microphone) ? 'Please select at least one device' : ''}
               >
@@ -730,7 +730,7 @@ const StreamPreviewModal = ({
               <button
                 onClick={handleStartStream}
                 disabled={!isPreviewActive || isStarting}
-                className="px-8 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition"
+                className="px-8 py-3 bg-greenLight hover:bg-opacity-80 disabled:bg-greyDark disabled:cursor-not-allowed text-whiteLight rounded-lg font-medium transition"
                 title={!isPreviewActive ? 'Please start preview first' : ''}
               >
                 {isStarting ? 'Starting Stream...' : 'Start Stream'}
@@ -738,28 +738,28 @@ const StreamPreviewModal = ({
               
               <button
                 onClick={onClose}
-                className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition"
+                className="px-6 py-3 bg-greyDark hover:bg-greyLight text-whiteLight rounded-lg font-medium transition"
               >
                 Cancel
               </button>
             </div>
             
             {/* Logs (Collapsible) */}
-            <details className="mt-4">
-              <summary className="cursor-pointer font-medium text-gray-300 hover:text-white">
+            {/* <details className="mt-4">
+              <summary className="cursor-pointer font-medium text-whiteHalf hover:text-whiteLight">
                 View Logs ({logs.length})
               </summary>
-              <div className="mt-2 max-h-32 overflow-y-auto bg-gray-800 p-3 rounded-lg">
+              <div className="mt-2 max-h-32 overflow-y-auto bg-blackDark p-3 rounded-lg border border-greyDark">
                 {logs.map(log => (
                   <div key={log.id} className={`text-xs mb-1 ${
                     log.type === 'error' ? 'text-red-400' : 
-                    log.type === 'warn' ? 'text-yellow-400' : 'text-gray-300'
+                    log.type === 'warn' ? 'text-whiteHalf' : 'text-whiteSecondary'
                   }`}>
-                    <span className="text-gray-500">[{log.timestamp}]</span> {log.message}
+                    <span className="text-whiteSecondary">[{log.timestamp}]</span> {log.message}
                   </div>
                 ))}
               </div>
-            </details>
+            </details> */}
           </div>
         </div>
       </div>

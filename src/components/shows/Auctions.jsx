@@ -249,7 +249,7 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
       {/* Product details */}
       <div className="p-1">
         <div className="flex items-center space-x-4 bg-stone-950/50 p-3 rounded-lg border border-stone-800">
-          <div className="w-24 h-24 bg-stone-800 rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="w-12 h-12 bg-stone-800 rounded-lg overflow-hidden flex items-center justify-center">
             <img
               src={signedUrls[product?.productId?._id] || "/placeholder.svg?height=96&width=96"}
               className="w-full h-full object-contain"
@@ -258,9 +258,9 @@ const Auctions = ({ showId, streamId, product, signedUrls, currentAuction }) => 
           </div>
           <div className="flex-1">
             <h4 className="text-lg font-bold text-white">{product?.productId?.title || "Product Title"}</h4>
-            <p className="text-stone-400 text-sm line-clamp-2">
-              {product?.productId?.description || "No description available"}
-            </p>
+              {/* <p className="text-stone-400 text-sm line-clamp-2">
+                {product?.productId?.description || "No description available"}
+              </p> */}
 
             {!isActive && !bidderWon && (
               <div className="mt-2 flex items-center gap-1.5 text-sm text-stone-400">

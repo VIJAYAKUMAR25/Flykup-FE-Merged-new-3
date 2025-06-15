@@ -1243,7 +1243,7 @@ const ShowDetailsSeller = () => {
 
         const handleGiveawayEndedManually = (data) => {
             console.log("Seller: Giveaway ended manually event received", data);
-            toast.info(`Giveaway manually ended for: ${data.productTitle || getProductIdSafely(data.productId) || 'product'}.`);
+            // toast.info(`Giveaway manually ended for: ${data.productTitle || getProductIdSafely(data.productId) || 'product'}.`);
             
             setCurrentLiveGiveaway(null);
 
@@ -1414,119 +1414,119 @@ const ShowDetailsSeller = () => {
                         )}
 
                         {activeTab === "Giveaway" && (
-                            <div className="space-y-4">
-                                {/* Display currently active giveaway if it exists */}
-                                {currentLiveGiveaway && currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded ? (
-                                    <>
-                                        <div className="bg-yellow-400 text-stone-900 p-3 rounded-lg text-center font-semibold text-sm mb-4 animate-pulse">
-                                            Active Giveaway Live!
+    <div className="space-y-4">
+        {/* --- MODIFIED RENDERING CONDITION FOR GiveAwaySellerControl --- */}
+        {currentLiveGiveaway ? ( // Render if ANY currentLiveGiveaway exists (active, ended, etc.)
+            <>
+                {currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded && (
+                    <div className="bg-yellow-400 text-stone-900 p-3 rounded-lg text-center font-semibold text-sm mb-4 animate-pulse">
+                        Active Giveaway Live!
+                    </div>
+                )}
+                {/* Always render GiveAwaySellerControl if currentLiveGiveaway exists */}
+                <GiveAwaySellerControl
+                    streamId={showId}
+                    product={currentLiveGiveaway}
+                    signedUrls={signedUrls}
+                    socket={socket}
+                    setCurrentLiveGiveaway={setCurrentLiveGiveaway}
+                />
+            </>
+        ) : (
+            // This path is taken only if currentLiveGiveaway is null (no active/recently ended giveaway)
+            // ... rest of your existing logic for "Available Giveaways" and "No giveaways added" ...
+            <>
+                {/* List all other (non-active, non-ended) giveaway products to be started */}
+                {show?.giveawayProducts?.filter(p => !p.isActive && !p.isGiveawayEnded).length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-stone-800">
+                        <h4 className="text-lg font-semibold text-stone-300 mb-4">Available Giveaways</h4>
+                        {show.giveawayProducts
+                            .filter(p => !p.isActive && !p.isGiveawayEnded)
+                            .sort((a, b) => (a.giveawayNumber || 0) - (b.giveawayNumber || 0))
+                            .map((taggedProduct) => {
+                                const anyGiveawayActive = currentLiveGiveaway && currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded; // Still used for disabling "Start" button
+                                return (
+                                    <div key={getProductIdSafely(taggedProduct.productId)} className="border border-stone-800 rounded-xl p-4 bg-stone-900 shadow-md">
+                                        <div className="flex items-center gap-4 mb-3">
+                                            <img
+                                                src={signedUrls[getProductIdSafely(taggedProduct.productId)] || "/placeholder.svg"}
+                                                className="w-16 h-16 object-contain rounded-lg border border-stone-700"
+                                                alt={taggedProduct.productId.title}
+                                            />
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-semibold">{taggedProduct.productId.title}</h3>
+                                                {taggedProduct.giveawayNumber && (
+                                                    <p className="text-sm text-stone-400">Giveaway #{taggedProduct.giveawayNumber}</p>
+                                                )}
+                                            </div>
                                         </div>
-                                        <GiveAwaySellerControl
-                                            streamId={showId}
-                                            product={currentLiveGiveaway}
-                                            signedUrls={signedUrls}
-                                            socket={socket}
-                                            setCurrentLiveGiveaway={setCurrentLiveGiveaway}
-                                        />
-                                    </>
-                                ) : (
-                                    <div className="text-center py-8 text-stone-400">
-                                        <p>No active giveaway at the moment.</p>
+                                        <button
+                                            onClick={() => {
+                                                if (socket) {
+                                                    const giveawayData = {
+                                                        streamId: showId,
+                                                        productId: getProductIdSafely(taggedProduct.productId),
+                                                        productTitle: taggedProduct.productId.title,
+                                                        followersOnly: taggedProduct.followersOnly || false,
+                                                        productOwnerSellerId: taggedProduct.productOwnerSellerId,
+                                                    };
+                                                    console.log("Attempting to start giveaway with data:", giveawayData);
+                                                    socket.emit('startGiveaway', giveawayData);
+                                                } else {
+                                                    toast.error("Socket not connected. Please refresh.");
+                                                }
+                                            }}
+                                            className={`w-full py-2 text-sm rounded-lg font-semibold transition-colors ${anyGiveawayActive || !socket ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
+                                            disabled={anyGiveawayActive || !socket}
+                                        >
+                                            {anyGiveawayActive ? 'Another Giveaway Active' : 'Start Giveaway'}
+                                        </button>
                                     </div>
-                                )}
-
-                                {/* List all other (non-active, non-ended) giveaway products to be started */}
-                                {show?.giveawayProducts?.filter(p => !p.isActive && !p.isGiveawayEnded).length > 0 && (
-                                    <div className="mt-4 pt-4 border-t border-stone-800">
-                                        <h4 className="text-lg font-semibold text-stone-300 mb-4">Available Giveaways</h4>
-                                        {show.giveawayProducts
-                                            .filter(p => !p.isActive && !p.isGiveawayEnded)
-                                            .sort((a, b) => (a.giveawayNumber || 0) - (b.giveawayNumber || 0))
-                                            .map((taggedProduct) => {
-                                                const anyGiveawayActive = currentLiveGiveaway && currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded;
-                                                return (
-                                                    <div key={getProductIdSafely(taggedProduct.productId)} className="border border-stone-800 rounded-xl p-4 bg-stone-900 shadow-md"> {/* Use safe getter for key */}
-                                                        <div className="flex items-center gap-4 mb-3">
-                                                            <img
-                                                                src={signedUrls[getProductIdSafely(taggedProduct.productId)] || "/placeholder.svg"} 
-                                                                className="w-16 h-16 object-contain rounded-lg border border-stone-700"
-                                                                alt={taggedProduct.productId.title}
-                                                            />
-                                                            <div className="flex-1">
-                                                                <h3 className="text-lg font-semibold">{taggedProduct.productId.title}</h3>
-                                                                {taggedProduct.giveawayNumber && (
-                                                                    <p className="text-sm text-stone-400">Giveaway #{taggedProduct.giveawayNumber}</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <button
-                                                            onClick={() => {
-                                                                if (socket) {
-                                                                    const giveawayData = {
-                                                                        streamId: showId,
-                                                                        productId: getProductIdSafely(taggedProduct.productId), // Use safe getter
-                                                                        productTitle: taggedProduct.productId.title,
-                                                                        followersOnly: taggedProduct.followersOnly || false,
-                                                                        productOwnerSellerId: taggedProduct.productOwnerSellerId,
-                                                                    };
-                                                                    console.log("Attempting to start giveaway with data:", giveawayData);
-                                                                    socket.emit('startGiveaway', giveawayData);
-                                                                } else {
-                                                                    toast.error("Socket not connected. Please refresh.");
-                                                                }
-                                                            }}
-                                                            className={`w-full py-2 text-sm rounded-lg font-semibold transition-colors ${anyGiveawayActive || !socket ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
-                                                            disabled={anyGiveawayActive || !socket}
-                                                        >
-                                                            {anyGiveawayActive ? 'Another Giveaway Active' : 'Start Giveaway'}
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
+                                );
+                            })}
+                    </div>
+                )}
+                {/* Section to show completed giveaways (remains the same) */}
+                {show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length > 0 && (
+                    <div className="mt-8 pt-4 border-t border-stone-800">
+                        <h4 className="text-lg font-semibold text-stone-300 mb-4">Completed Giveaways</h4>
+                        {show.giveawayProducts
+                            .filter(p => p.isGiveawayEnded)
+                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                            .map(completedProduct => (
+                                <div key={getProductIdSafely(completedProduct.productId)} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2">
+                                    <img
+                                        src={signedUrls[getProductIdSafely(completedProduct.productId)] || "/placeholder.svg"}
+                                        className="w-12 h-12 object-contain rounded-lg border border-stone-700"
+                                        alt={completedProduct.productTitle}
+                                    />
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-sm">{completedProduct.productTitle}</p>
+                                        {completedProduct.winner ? (
+                                            <p className="text-xs text-green-400 flex items-center gap-1">
+                                                <Trophy size={12} /> Winner: {completedProduct.winner.userName || completedProduct.winner.name || "Unknown"}
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs text-red-400">Ended without winner</p>
+                                        )}
                                     </div>
-                                )}
-
-                                {/* Section to show completed giveaways */}
-                                {show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length > 0 && (
-                                    <div className="mt-8 pt-4 border-t border-stone-800">
-                                        <h4 className="text-lg font-semibold text-stone-300 mb-4">Completed Giveaways</h4>
-                                        {show.giveawayProducts
-                                            .filter(p => p.isGiveawayEnded)
-                                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                            .map(completedProduct => (
-                                                <div key={getProductIdSafely(completedProduct.productId)} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2"> {/* Use safe getter for key */}
-                                                    <img
-                                                        src={signedUrls[getProductIdSafely(completedProduct.productId)] || "/placeholder.svg"} 
-                                                        className="w-12 h-12 object-contain rounded-lg border border-stone-700"
-                                                        alt={completedProduct.productTitle}
-                                                    />
-                                                    <div className="flex-1">
-                                                        <p className="font-semibold text-sm">{completedProduct.productTitle}</p>
-                                                        {completedProduct.winner ? (
-                                                            <p className="text-xs text-green-400 flex items-center gap-1">
-                                                                <Trophy size={12} /> Winner: {completedProduct.winner.userName || completedProduct.winner.name || "Unknown"}
-                                                            </p>
-                                                        ) : (
-                                                            <p className="text-xs text-red-400">Ended without winner</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                    </div>
-                                )}
-
-                                {/* Message if no giveaways at all */}
-                                {!currentLiveGiveaway &&
-                                    show?.giveawayProducts?.filter(p => !p.isActive && !p.isGiveawayEnded).length === 0 &&
-                                    show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length === 0 && (
-                                    <div className="text-center py-8 text-stone-400">
-                                        <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                        <p>No giveaway products added yet.</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                                </div>
+                            ))}
+                    </div>
+                )}
+                {/* Message if no giveaways at all (remains the same) */}
+                {!currentLiveGiveaway &&
+                    show?.giveawayProducts?.filter(p => !p.isActive && !p.isGiveawayEnded).length === 0 &&
+                    show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length === 0 && (
+                    <div className="text-center py-8 text-stone-400">
+                        <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>No giveaway products added yet.</p>
+                    </div>
+                )}
+            </>
+        )}
+    </div>
+)}
                     </div>
                 </div>
             </div>
@@ -1686,11 +1686,15 @@ const ShowDetailsSeller = () => {
 
                                 {activeTab === "Giveaway" && (
                                     <div className="space-y-4">
-                                        {currentLiveGiveaway && currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded ? (
+                                        {/* --- MODIFIED RENDERING CONDITION FOR GiveAwaySellerControl --- */}
+                                        {currentLiveGiveaway ? ( // Render if ANY currentLiveGiveaway exists (active, ended, etc.)
                                             <>
-                                                <div className="bg-yellow-400 text-stone-900 p-3 rounded-lg text-center font-semibold text-sm mb-4 animate-pulse">
-                                                    Active Giveaway Live!
-                                                </div>
+                                                {currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded && (
+                                                    <div className="bg-yellow-400 text-stone-900 p-3 rounded-lg text-center font-semibold text-sm mb-4 animate-pulse">
+                                                        Active Giveaway Live!
+                                                    </div>
+                                                )}
+                                                {/* Always render GiveAwaySellerControl if currentLiveGiveaway exists */}
                                                 <GiveAwaySellerControl
                                                     streamId={showId}
                                                     product={currentLiveGiveaway}
@@ -1700,101 +1704,100 @@ const ShowDetailsSeller = () => {
                                                 />
                                             </>
                                         ) : (
-                                            <div className="text-center py-8 text-stone-400">
-                                                <p>No active giveaway at the moment.</p>
-                                            </div>
-                                        )}
-
-                                        {show?.giveawayProducts?.filter(p => !p.isActive && !p.isGiveawayEnded).length > 0 && (
-                                            <div className="mt-4 pt-4 border-t border-stone-800">
-                                                <h4 className="text-lg font-semibold text-stone-300 mb-4">Available Giveaways</h4>
-                                                {show.giveawayProducts
-                                                    .filter(p => !p.isActive && !p.isGiveawayEnded)
-                                                    .sort((a, b) => (a.giveawayNumber || 0) - (b.giveawayNumber || 0))
-                                                    .map((taggedProduct) => {
-                                                        const anyGiveawayActive = currentLiveGiveaway && currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded;
-                                                        return (
-                                                            <div key={getProductIdSafely(taggedProduct.productId)} className="border border-stone-800 rounded-xl p-4 bg-stone-900 shadow-md"> 
-                                                                <div className="flex items-center gap-4 mb-3">
+                                            // This path is taken only if currentLiveGiveaway is null (no active/recently ended giveaway)
+                                            // ... rest of your existing logic for "Available Giveaways" and "No giveaways added" ...
+                                            <>
+                                                {/* List all other (non-active, non-ended) giveaway products to be started */}
+                                                {show?.giveawayProducts?.filter(p => !p.isActive && !p.isGiveawayEnded).length > 0 && (
+                                                    <div className="mt-4 pt-4 border-t border-stone-800">
+                                                        <h4 className="text-lg font-semibold text-stone-300 mb-4">Available Giveaways</h4>
+                                                        {show.giveawayProducts
+                                                            .filter(p => !p.isActive && !p.isGiveawayEnded)
+                                                            .sort((a, b) => (a.giveawayNumber || 0) - (b.giveawayNumber || 0))
+                                                            .map((taggedProduct) => {
+                                                                const anyGiveawayActive = currentLiveGiveaway && currentLiveGiveaway.isActive && !currentLiveGiveaway.isGiveawayEnded; // Still used for disabling "Start" button
+                                                                return (
+                                                                    <div key={getProductIdSafely(taggedProduct.productId)} className="border border-stone-800 rounded-xl p-4 bg-stone-900 shadow-md">
+                                                                        <div className="flex items-center gap-4 mb-3">
+                                                                            <img
+                                                                                src={signedUrls[getProductIdSafely(taggedProduct.productId)] || "/placeholder.svg"}
+                                                                                className="w-16 h-16 object-contain rounded-lg border border-stone-700"
+                                                                                alt={taggedProduct.productId.title}
+                                                                            />
+                                                                            <div className="flex-1">
+                                                                                <h3 className="text-lg font-semibold">{taggedProduct.productId.title}</h3>
+                                                                                {taggedProduct.giveawayNumber && (
+                                                                                    <p className="text-sm text-stone-400">Giveaway #{taggedProduct.giveawayNumber}</p>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                if (socket) {
+                                                                                    const giveawayData = {
+                                                                                        streamId: showId,
+                                                                                        productId: getProductIdSafely(taggedProduct.productId),
+                                                                                        productTitle: taggedProduct.productId.title,
+                                                                                        followersOnly: taggedProduct.followersOnly || false,
+                                                                                        productOwnerSellerId: taggedProduct.productOwnerSellerId,
+                                                                                    };
+                                                                                    console.log("Attempting to start giveaway with data:", giveawayData);
+                                                                                    socket.emit('startGiveaway', giveawayData);
+                                                                                } else {
+                                                                                    toast.error("Socket not connected. Please refresh.");
+                                                                                }
+                                                                            }}
+                                                                            className={`w-full py-2 text-sm rounded-lg font-semibold transition-colors ${anyGiveawayActive || !socket ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
+                                                                            disabled={anyGiveawayActive || !socket}
+                                                                        >
+                                                                            {anyGiveawayActive ? 'Another Giveaway Active' : 'Start Giveaway'}
+                                                                        </button>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                    </div>
+                                                )}
+                                                {/* Section to show completed giveaways (remains the same) */}
+                                                {show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length > 0 && (
+                                                    <div className="mt-8 pt-4 border-t border-stone-800">
+                                                        <h4 className="text-lg font-semibold text-stone-300 mb-4">Completed Giveaways</h4>
+                                                        {show.giveawayProducts
+                                                            .filter(p => p.isGiveawayEnded)
+                                                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                                            .map(completedProduct => (
+                                                                <div key={getProductIdSafely(completedProduct.productId)} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2">
                                                                     <img
-                                                                        src={signedUrls[getProductIdSafely(taggedProduct.productId)] || "/placeholder.svg"} 
-                                                                        className="w-16 h-16 object-contain rounded-lg border border-stone-700"
-                                                                        alt={taggedProduct.productId.title}
+                                                                        src={signedUrls[getProductIdSafely(completedProduct.productId)] || "/placeholder.svg"}
+                                                                        className="w-12 h-12 object-contain rounded-lg border border-stone-700"
+                                                                        alt={completedProduct.productTitle}
                                                                     />
                                                                     <div className="flex-1">
-                                                                        <h3 className="text-lg font-semibold">{taggedProduct.productId.title}</h3>
-                                                                        {taggedProduct.giveawayNumber && (
-                                                                            <p className="text-sm text-stone-400">Giveaway #{taggedProduct.giveawayNumber}</p>
+                                                                        <p className="font-semibold text-sm">{completedProduct.productTitle}</p>
+                                                                        {completedProduct.winner ? (
+                                                                            <p className="text-xs text-green-400 flex items-center gap-1">
+                                                                                <Trophy size={12} /> Winner: {completedProduct.winner.userName || completedProduct.winner.name || "Unknown"}
+                                                                            </p>
+                                                                        ) : (
+                                                                            <p className="text-xs text-red-400">Ended without winner</p>
                                                                         )}
                                                                     </div>
                                                                 </div>
-
-                                                                <button
-                                                                    onClick={() => {
-                                                                        if (socket) {
-                                                                            const giveawayData = {
-                                                                                streamId: showId,
-                                                                                productId: getProductIdSafely(taggedProduct.productId), // Use safe getter
-                                                                                productTitle: taggedProduct.productId.title,
-                                                                                followersOnly: taggedProduct.followersOnly || false,
-                                                                                productOwnerSellerId: taggedProduct.productOwnerSellerId,
-                                                                            };
-                                                                            console.log("Attempting to start giveaway with data:", giveawayData);
-                                                                            socket.emit('startGiveaway', giveawayData);
-                                                                        } else {
-                                                                            toast.error("Socket not connected. Please refresh.");
-                                                                        }
-                                                                    }}
-                                                                    className={`w-full py-2 text-sm rounded-lg font-semibold transition-colors ${anyGiveawayActive || !socket ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
-                                                                    disabled={anyGiveawayActive || !socket}
-                                                                >
-                                                                    {anyGiveawayActive ? 'Another Giveaway Active' : 'Start Giveaway'}
-                                                                </button>
-                                                            </div>
-                                                        );
-                                                    })}
-                                            </div>
-                                        )}
-
-                                        {show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length > 0 && (
-                                            <div className="mt-8 pt-4 border-t border-stone-800">
-                                                <h4 className="text-lg font-semibold text-stone-300 mb-4">Completed Giveaways</h4>
-                                                {show.giveawayProducts
-                                                    .filter(p => p.isGiveawayEnded)
-                                                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                                    .map(completedProduct => (
-                                                        <div key={getProductIdSafely(completedProduct.productId)} className="flex items-center gap-3 p-3 bg-stone-900 rounded-lg mb-2"> 
-                                                            <img
-                                                                src={signedUrls[getProductIdSafely(completedProduct.productId)] || "/placeholder.svg"} 
-                                                                className="w-12 h-12 object-contain rounded-lg border border-stone-700"
-                                                                alt={completedProduct.productTitle}
-                                                            />
-                                                            <div className="flex-1">
-                                                                <p className="font-semibold text-sm">{completedProduct.productTitle}</p>
-                                                                {completedProduct.winner ? (
-                                                                    <p className="text-xs text-green-400 flex items-center gap-1">
-                                                                        <Trophy size={12} /> Winner: {completedProduct.winner.userName || completedProduct.winner.name || "Unknown"}
-                                                                    </p>
-                                                                ) : (
-                                                                    <p className="text-xs text-red-400">Ended without winner</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                            </div>
-                                        )}
-
-                                        {/* Message if no giveaways at all */}
-                                        {!currentLiveGiveaway &&
-                                            show?.giveawayProducts?.filter(p => !p.isActive && !p.isGiveawayEnded).length === 0 &&
-                                            show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length === 0 && (
-                                            <div className="text-center py-8 text-stone-400">
-                                                <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                                <p>No giveaway products added yet.</p>
-                                            </div>
+                                                            ))}
+                                                    </div>
+                                                )}
+                                                {/* Message if no giveaways at all (remains the same) */}
+                                                {!currentLiveGiveaway &&
+                                                    show?.giveawayProducts?.filter(p => !p.isActive && !p.isGiveawayEnded).length === 0 &&
+                                                    show?.giveawayProducts?.filter(p => p.isGiveawayEnded).length === 0 && (
+                                                    <div className="text-center py-8 text-stone-400">
+                                                        <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                                        <p>No giveaway products added yet.</p>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
-                                )}
+                                )}; 
                             </div>
                         </motion.div>
                     </motion.div>

@@ -62,7 +62,7 @@ const isSelectCategoriesPage = location.pathname === '/select-categories';
           }
         />
         <Route
-          path="/*" // Catches /home, /dashboard, and other main app routes
+          path="/*" 
           element={
             <ProtectedPage
               element={<Home inputData={inputData} setInputData={setInputData} />}

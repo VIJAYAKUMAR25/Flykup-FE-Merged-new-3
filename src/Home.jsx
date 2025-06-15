@@ -61,6 +61,7 @@ import VerifySeller from "./components/reuse/auth/VerifySeller.jsx"
 import EditLiveStreamPage from "./components/reuse/LiveStream/EditShowForm.jsx"
 
 
+
 const Home = ({ inputData, setInputData }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -99,7 +100,6 @@ const Home = ({ inputData, setInputData }) => {
           <Route path="sellerform" element={<SellerFormNew />} />
           <Route path="social-seller-registration" element={<SocialSeller />} />
           <Route path="brand-seller-registration" element={<BrandSeller />} />
-
           <Route path="shows" element={<Shows />} />
           <Route path="liveshows" element={<ShowsFeed />} />
           <Route path="show/:id" element={<ShowDetailsPage />} />

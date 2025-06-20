@@ -1,6 +1,6 @@
 import React from 'react';
-import Terms from "../../../public/TermsofService.html?url"; 
-// Reusing the same styles
+import Terms from "../../assets/TermsOfService.html?url";
+
 const pageStyles = {
     height: '100vh',
     width: '100vw',

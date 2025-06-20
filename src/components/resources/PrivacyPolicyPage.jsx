@@ -1,5 +1,5 @@
 import React from 'react';
-import privacyUrl from "../../../public/PrivacyPolicy.html?url"; 
+import privacyUrl from "../../assets/PrivacyPolicy.html?url"; 
 
 const pageStyles = {
     height: '100vh',

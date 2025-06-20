@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-// === Unga project ku correct imports ===
-import { useFollowApi } from './useFollowApi'; // getFollowers irukkanum
+import { useFollowApi } from './useFollowApi';
 import { useAlert } from '../Alerts/useAlert';
 import UserItem from './UserItem';
 // =====================================

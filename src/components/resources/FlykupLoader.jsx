@@ -17,6 +17,21 @@ const FlykupLoader = ({ text = "Loading Flykup..." }) => {
     return () => clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    // Get all cookies
+    const cookies = document.cookie.split(';');
+
+    // Iterate over cookies and set their expiration to a past date
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i];
+      const eqPos = cookie.indexOf("=");
+      const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
+      // Set the cookie with an immediate expiry date in the past
+      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+    }
+    console.log("All cookies cleared on page load.");
+  }, []); // The empty dependency array ensures this runs only once on mount
+
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-r from-[#0F0F0F] via-[#1A1A1A] to-[#0F0F0F] bg-opacity-95 z-50">
       {/* Background pattern */}

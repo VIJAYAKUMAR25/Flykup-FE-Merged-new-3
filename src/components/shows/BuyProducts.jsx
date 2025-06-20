@@ -235,7 +235,6 @@
 
 // export default BuyProducts;
 
-
 import { IndianRupee } from 'lucide-react';
 import { useState } from 'react';
 import io from 'socket.io-client';
@@ -244,7 +243,7 @@ import PaymentSuccess from './PaymentSuccess';
 import PaymentFailed from './PaymentFailed';
 import { AddressSelection } from './AddressSelection';
 import { OrderSummary } from './OrderSummary';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext'; // (1) useAuth will provide requireAuth
 import { useCart } from '../../context/CartContext';
 import { toast } from 'react-toastify';
 import { useAlert } from '../Alerts/useAlert';
@@ -255,21 +254,10 @@ const socket = io.connect(socketurl, {
 });
 
 const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, currentAuction }) => {
-  const { user } = useAuth();
+  // (1) Destructure requireAuth from the useAuth hook, along with user
+  const { user, requireAuth } = useAuth();
   
-  // Add error handling for useCart
-  const cartContext = useCart();
-  if (!cartContext) {
-    console.error('useCart must be used within a CartProvider');
-    // Provide fallback values
-    var cart = [];
-    var addProduct = () => {
-      console.warn('Cart functionality not available - CartProvider missing');
-      toast.error('Cart functionality not available');
-    };
-  } else {
-    var { cart, addProduct } = cartContext;
-  }
+ 
 
   const [showPayment, setShowPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
@@ -281,24 +269,30 @@ const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, current
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const { positive, negative } = useAlert();
 
+  // (2) Wrap the core logic of handleBuy inside requireAuth
   const handleBuy = () => {
-    const totalAmount = product?.productPrice * selectedQuantity;
-    setPaymentAmount(totalAmount);
-    setShowPayment(true);
-    setCheckoutStep('address');
-    setPaymentStatus(null);
-    setPaymentError(null);
-    setPaymentDetails(null);
+    requireAuth(() => {
+      const totalAmount = product?.productPrice * selectedQuantity;
+      setPaymentAmount(totalAmount);
+      setShowPayment(true);
+      setCheckoutStep('address');
+      setPaymentStatus(null);
+      setPaymentError(null);
+      setPaymentDetails(null);
+    });
   };
 
+  // (2) Also wrap handleAddToCart inside requireAuth
   const handleAddToCart = () => {
-    try {
-      addProduct(product.productId, selectedQuantity);
-      positive("Added to cart!");
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      negative("Failed to add to cart");
-    }
+    requireAuth(() => {
+      try {
+        addProduct(product.productId, selectedQuantity);
+        positive("Added to cart!");
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+        negative("Failed to add to cart");
+      }
+    });
   };
 
   const handlePaymentSuccess = (paymentDetails) => {
@@ -338,6 +332,7 @@ const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, current
 
   return (
     <div className="mx-auto text-white">
+      {/* Your existing JSX for product display */}
       <div className="w-full max-w-[320px] mx-auto bg-stone-900 rounded-lg shadow-sm border border-stone-800 overflow-hidden">
         <div className="flex h-28 rounded-lg overflow-hidden shadow-lg">
           {/* Product Image - Left Side */}
@@ -371,23 +366,6 @@ const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, current
                 </span>
               </div>
               
-              {/* Quantity Control - Uncomment if needed */}
-              {/* <div className="bg-black bg-opacity-70 backdrop-blur-sm px-1 py-1 rounded-full flex items-center gap-1.5 text-white font-semibold text-[10px]">
-                <button
-                  onClick={() => setSelectedQuantity(Math.max(1, selectedQuantity - 1))}
-                  className="hover:text-red-400 transition text-[10px] w-4 h-4 flex items-center justify-center"
-                >
-                  -
-                </button>
-                <span className="min-w-[10px] text-center text-[10px]">{selectedQuantity}</span>
-                <button
-                  onClick={() => setSelectedQuantity(selectedQuantity + 1)}
-                  className="hover:text-green-400 transition text-[10px] w-4 h-4 flex items-center justify-center"
-                >
-                  +
-                </button>
-              </div> */}
-              
               {/* Buy Button */}
               <button 
                 onClick={handleBuy}
@@ -395,19 +373,12 @@ const BuyProducts = ({ showId, streamId, product, signedUrls, fetchShow, current
               >
                 Buy Now
               </button>
-              
-              {/* Add to Cart Button - Uncomment if needed */}
-              {/* <button
-                onClick={handleAddToCart}
-                className="w-full px-3 py-[5px] sm:py-1.5 bg-gradient-to-r from-emerald-500 to-green-500 text-black rounded-full text-[10px] sm:text-xs font-semibold shadow-sm"
-              >
-                Add to Cart
-              </button> */}
             </div>
           </div>
         </div>
       </div>
 
+      {/* Your existing JSX for the payment modal */}
       {showPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
           <div className="bg-stone-900 w-full max-w-lg rounded-2xl relative">

@@ -320,7 +320,7 @@ const ShoppableVideoDetail = () => {
               <div className="relative bg-black rounded-2xl overflow-hidden aspect-[9/16] max-w-md mx-auto shadow-2xl shadow-black/30 border border-greyLight">
                 <video 
                   ref={videoRef}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain bg-black" // Added object-contain and bg-black
                   poster={video?.thumbnailBlobName ? `${CDNURL}${video.thumbnailBlobName}` : undefined}
                   playsInline 
                   preload="metadata"
@@ -446,7 +446,7 @@ const ShoppableVideoDetail = () => {
                           <div>
                            <h3 className="font-semibold text-whiteLight mb-1.5 truncate">
                             {product.title || "Unnamed Product"}
-                          </h3>
+                           </h3>
                             <div className="flex items-baseline gap-2 mb-2">
                               <span className="text-xl font-bold text-greenLight">
                                 ₹{product.productPrice?.toLocaleString() || 'N/A'}

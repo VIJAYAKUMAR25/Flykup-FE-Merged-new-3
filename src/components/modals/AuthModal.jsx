@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState('login'); // 'login', 'register', 'otp', 'forgot', 'reset'
+  const [currentView, setCurrentView] = useState('login');
   const [inputData, setInputData] = useState({
     name: "", 
     email: "", 

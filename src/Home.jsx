@@ -23,7 +23,6 @@ import Shows from "./components/shows/Shows.jsx"
 import ShowDetailsPage from "./components/shows/ShowDetailsPage.jsx"
 import ShowDetailsSeller from "./components/shows/ShowDetailsSeller.jsx"
 import Feed from "./components/reels/pages/Feed.jsx"
-import Dashboard from "./components/giveaway/pages/Dashboard.jsx"
 import ShopableForm from "./components/reuse/ShopableVideos/ShopableForm.jsx"
 import ViewShopable from "./components/reuse/ShopableVideos/ViewShoapable.jsx"
 import ShopableVideoDetail from "./components/reuse/ShopableVideos/ShopableVideoDetail.jsx"
@@ -40,7 +39,6 @@ import ProductsPage from "./components/products/ProductsPage.jsx"
 import Checkout from "./components/products/Checkout.jsx"
 import { CartProvider } from "./context/CartContext.jsx"
 import UserOrders from "./components/orders/UserOrders.jsx"
-import UserProfile from "./components/ProfileComponents/UserProfile.jsx"
 import ShipperProtectedPage from "./ShipperProtectedPage.jsx"
 import ShipperPage from "./components/shipper/ShipperPage.jsx"
 import ShipperMain from "./components/main/ShipperMain.jsx"
@@ -59,8 +57,6 @@ import CohostStream from "./components/reuse/LiveStream/CohostStream.jsx"
 import UserVerificationFlow from "./components/reuse/auth/VerifiedUserApplication.jsx"
 import VerifySeller from "./components/reuse/auth/VerifySeller.jsx"
 import EditLiveStreamPage from "./components/reuse/LiveStream/EditShowForm.jsx"
-
-
 
 const Home = ({ inputData, setInputData }) => {
   const navigate = useNavigate();
@@ -96,7 +92,6 @@ const Home = ({ inputData, setInputData }) => {
           {/* <Route path="" element={<MainFeed />} /> */}
           {/* <Route path="" element={<MainFeed />} /> */}
           <Route path="" element={<GlobalSearch />} />
-          <Route path="user/:userName" element={<UserProfile />} />
           <Route path="sellerform" element={<SellerFormNew />} />
           <Route path="social-seller-registration" element={<SocialSeller />} />
           <Route path="brand-seller-registration" element={<BrandSeller />} />
@@ -106,7 +101,6 @@ const Home = ({ inputData, setInputData }) => {
 
           <Route path="reels" element={<Feed />} />
           <Route path="reel/:reelId" element={<Feed />} />
-          <Route path="giveaway" element={<Dashboard />} />
 
           <Route path="product/:productId" element={<ProductsPage />} />
           <Route path="checkout" element={<Checkout />} />

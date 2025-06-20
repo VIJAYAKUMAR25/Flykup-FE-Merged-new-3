@@ -4,21 +4,22 @@ import "./App.css";
 import AuthLayout from "./layout/auth.jsx";
 import Home from "./Home.jsx";
 import CategoryPage from "./components/reuse/auth/CategoryPage.jsx"; 
-
+import UserProfile from "./components/ProfileComponents/UserProfile.jsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { useState, useEffect } from "react";
 import ProtectedPage from "./ProtectedPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider} from "./context/AuthContext.jsx";
-import { AlertProvider } from './components/Alerts/AlertProviedr.jsx'; // Adjust path
-import { SearchTabProvider } from "./context/SearchContext.jsx"; // Adjust path
-import { AlertsContainer } from "./components/Alerts/AlertContainer.jsx"; // Adjust path
-import { FaSpinner } from "react-icons/fa"; // For a loading spinner
+import { AlertProvider } from './components/Alerts/AlertProviedr.jsx'; 
+import { SearchTabProvider } from "./context/SearchContext.jsx"; 
+import { AlertsContainer } from "./components/Alerts/AlertContainer.jsx"; 
 import { useAuth } from "./context/AuthContext.jsx";
 import FlykupLoader from "./components/resources/FlykupLoader.jsx";
 import ShowDetailsPage from "./components/shows/ShowDetailsPage.jsx";
 import PublicWithAuthGate from "./PublicWithAuthGate.jsx";
+import PrivacyPolicyPage from "./components/resources/PrivacyPolicyPage.jsx";
+import TermsOfServicePage from "./components/resources/TermsofService.jsx";
 // This component contains the core app logic and routes,
 // and can safely use router and auth hooks.
 function AppContentWrapper() {
@@ -51,6 +52,8 @@ const isSelectCategoriesPage = location.pathname === '/select-categories';
   return (
     <div className="font-montserrat "> 
       <Routes>
+         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+         <Route path="/terms-of-service" element={<TermsOfServicePage />} />
          <Route
           path="/user/show/:id"
           element={
@@ -59,6 +62,15 @@ const isSelectCategoriesPage = location.pathname === '/select-categories';
             />
           }
         />
+         <Route
+          path="/user/user/:userName"
+          element={
+            <PublicWithAuthGate
+              element={<UserProfile />}
+            />
+          }
+        />
+
         <Route
           path="/auth/*"
           element={<AuthLayout inputData={inputData} setInputData={setInputData} />}

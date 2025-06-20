@@ -21,6 +21,7 @@ import StreamPreviewModal from "./StreamPreviewModal.jsx"
 
 
 export default function StartStream(showId) {
+  console.log("StartStream component initialized with showId:", showId)
   // State variables remain the same
   const [sellerId, setSellerId] = useState("")
   const [isConnected, setIsConnected] = useState(false)
